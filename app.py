@@ -5,7 +5,7 @@ app = Flask(__name__)
 
 data = []
 
-with open('data.csv', newline='', encoding='utf-8') as f:
+with open('data.csv', newline='', encoding='utf-8-sig') as f:
     reader = csv.DictReader(f)
     for row in reader:
         if row['사용여부'] == 'Y':
