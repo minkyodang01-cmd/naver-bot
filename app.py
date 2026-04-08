@@ -9,6 +9,7 @@ app = Flask(__name__)
 
 BOT_ID = os.environ["BOT_ID"]
 CATEGORY_LIST = ["HKMC", "GM", "RENAULT", "APTIV"]
+CAROUSEL_SIZE = 10
 
 data = []
 
@@ -26,11 +27,11 @@ with open("data.csv", newline="", encoding="utf-8-sig") as f:
         if str(row.get("사용여부", "")).strip().upper() == "Y":
             cleaned = {
                 "구분": str(row.get("구분", "")).strip().upper(),
-                "페이지": to_int(row.get("페이지", 1), 1),
                 "정렬순서": to_int(row.get("정렬순서", 9999), 9999),
                 "스펙코드": str(row.get("스펙코드", "")).strip(),
                 "간단설명": str(row.get("간단설명", "")).strip(),
-                "PDF링크": str(row.get("PDF링크", "")).strip()
+                "PDF링크": str(row.get("PDF링크", "")).strip(),
+                "이미지링크": str(row.get("이미지링크", "")).strip()
             }
             data.append(cleaned)
 
@@ -120,120 +121,61 @@ def send_category_menu(user_id):
     send_request(user_id, body)
 
 
-def get_pages_by_category(category):
-    pages = sorted(
-        list({row["페이지"] for row in data if row["구분"] == category})
-    )
-    return pages
+def get_rows_by_category(category):
+    rows = [row for row in data if row["구분"] == category]
+    rows.sort(key=lambda x: (x["정렬순서"], x["스펙코드"]))
+    return rows
 
 
-def send_page_menu(user_id, category):
-    pages = get_pages_by_category(category)
-
-    if not pages:
-        send_text_message(user_id, f"{category} 목록이 없습니다.")
-        return
-
-    if len(pages) == 1:
-        send_list_message(user_id, category, pages[0])
-        return
-
-    actions = []
-    for page in pages[:10]:
-        actions.append({
-            "type": "message",
-            "label": f"{page}페이지",
-            "text": f"PAGE|{category}|{page}"
-        })
-
-    body = {
-        "content": {
-            "type": "button_template",
-            "contentText": f"{category} 페이지를 선택하세요.",
-            "actions": actions
-        }
-    }
-
-    send_request(user_id, body)
+def chunk_list(items, size):
+    return [items[i:i + size] for i in range(0, len(items), size)]
 
 
-def send_list_message(user_id, category, page):
-    rows = [
-        row for row in data
-        if row["구분"] == category and row["페이지"] == page
-    ]
-
-    rows.sort(key=lambda x: x["정렬순서"])
-
-    if not rows:
-        send_text_message(user_id, f"{category} {page}페이지 목록이 없습니다.")
-        return
-
-    elements = []
-    for row in rows[:4]:
-        elements.append({
-            "title": row["스펙코드"],
-            "subtitle": row["간단설명"],
-            "action": {
+def make_carousel_column(row):
+    column = {
+        "title": row["스펙코드"],
+        "text": row["간단설명"] if row["간단설명"] else "설명 없음",
+        "actions": [
+            {
                 "type": "uri",
                 "label": "보기",
                 "uri": row["PDF링크"]
             }
-        })
-
-    body = {
-        "content": {
-            "type": "list_template",
-            "headerText": f"{category} {page}페이지",
-            "elements": elements
-        }
+        ]
     }
 
-    send_request(user_id, body)
-    send_page_nav(user_id, category, page)
+    if row["이미지링크"]:
+        column["thumbnailImageUrl"] = row["이미지링크"]
+
+    return column
 
 
-def send_page_nav(user_id, category, current_page):
-    pages = get_pages_by_category(category)
-    max_page = max(pages) if pages else 1
+def send_carousel_message(user_id, category):
+    rows = get_rows_by_category(category)
 
-    actions = []
+    if not rows:
+        send_text_message(user_id, f"{category} 목록이 없습니다.")
+        return
 
-    if current_page > 1:
-        actions.append({
-            "type": "message",
-            "label": "이전",
-            "text": f"PAGE|{category}|{current_page - 1}"
-        })
+    chunks = chunk_list(rows, CAROUSEL_SIZE)
 
-    if current_page < max_page:
-        actions.append({
-            "type": "message",
-            "label": "다음",
-            "text": f"PAGE|{category}|{current_page + 1}"
-        })
+    for idx, chunk in enumerate(chunks, start=1):
+        columns = [make_carousel_column(row) for row in chunk]
 
-    actions.append({
-        "type": "message",
-        "label": "처음",
-        "text": f"PAGE|{category}|1"
-    })
-
-    actions.append({
-        "type": "message",
-        "label": "구분선택",
-        "text": "스펙"
-    })
-
-    body = {
-        "content": {
-            "type": "button_template",
-            "contentText": f"{category} {current_page}/{max_page}",
-            "actions": actions[:10]
+        body = {
+            "content": {
+                "type": "carousel",
+                "columns": columns
+            }
         }
-    }
 
-    send_request(user_id, body)
+        send_request(user_id, body)
+
+        if len(chunks) > 1 and idx < len(chunks):
+            send_text_message(
+                user_id,
+                f"{category} {idx}/{len(chunks)}"
+            )
 
 
 @app.route("/", methods=["POST"])
@@ -251,20 +193,11 @@ def bot():
     if msg.startswith("CAT|"):
         category = msg.split("|", 1)[1].strip().upper()
         if category in CATEGORY_LIST:
-            send_page_menu(user_id, category)
-        return "ok", 200
-
-    if msg.startswith("PAGE|"):
-        parts = msg.split("|")
-        if len(parts) == 3:
-            category = parts[1].strip().upper()
-            page = to_int(parts[2], 1)
-            if category in CATEGORY_LIST:
-                send_list_message(user_id, category, page)
+            send_carousel_message(user_id, category)
         return "ok", 200
 
     if msg in CATEGORY_LIST:
-        send_page_menu(user_id, msg)
+        send_carousel_message(user_id, msg)
         return "ok", 200
 
     return "ok", 200
