@@ -4,7 +4,7 @@ import requests
 import os
 import time
 import jwt
-from threading import Thread, Lock
+from threading import Lock
 
 app = Flask(__name__)
 
@@ -13,12 +13,14 @@ CATEGORY_LIST = ["HKMC", "GM", "RENAULT", "APTIV"]
 CAROUSEL_SIZE = 10
 
 FAQ = {
-    "주소": "부산 강서구 녹산산단 382로 14번가길 9.",
-    "전화번호": "02-1234-5678",
+    "주소": "서울시 ...\n한미케이블 본사",
+    "회사주소": "서울시 ...\n한미케이블 본사",
+    "본사주소": "서울시 ...\n한미케이블 본사",
+    "전화번호": "대표번호: 02-1234-5678\n팩스: 02-1111-2222",
     "대표번호": "02-1234-5678",
     "연락처": "02-1234-5678",
     "팩스": "02-1111-2222",
-    "이메일": "test@example.com",
+    "이메일": "대표: test@example.com\n기술문의: tech@example.com",
     "홈페이지": "https://example.com"
 }
 
@@ -97,7 +99,6 @@ def get_token():
             raise Exception(f"access_token 없음: {token_json}")
 
         cached_token = token_json["access_token"]
-
         expires_in = to_int(token_json.get("expires_in", 3600), 3600)
         cached_token_expire_at = now + max(60, expires_in - 120)
 
@@ -200,30 +201,26 @@ def send_carousel_message(user_id, category):
 
 
 def handle_message(user_id, raw_msg):
-    try:
-        raw_msg = str(raw_msg).strip()
-        msg = raw_msg.upper()
+    raw_msg = str(raw_msg).strip()
+    msg = raw_msg.upper()
 
-        if msg in FAQ_UPPER:
-            send_text_message(user_id, FAQ_UPPER[msg])
-            return
+    if msg in FAQ_UPPER:
+        send_text_message(user_id, FAQ_UPPER[msg])
+        return
 
-        if msg in ["스펙".upper(), "SPEC"]:
-            send_category_menu(user_id)
-            return
+    if msg in ["스펙".upper(), "SPEC"]:
+        send_category_menu(user_id)
+        return
 
-        if msg.startswith("CAT|"):
-            category = msg.split("|", 1)[1].strip().upper()
-            if category in CATEGORY_LIST:
-                send_carousel_message(user_id, category)
-            return
+    if msg.startswith("CAT|"):
+        category = msg.split("|", 1)[1].strip().upper()
+        if category in CATEGORY_LIST:
+            send_carousel_message(user_id, category)
+        return
 
-        if msg in CATEGORY_LIST:
-            send_carousel_message(user_id, msg)
-            return
-
-    except Exception as e:
-        print("HANDLE ERROR:", str(e))
+    if msg in CATEGORY_LIST:
+        send_carousel_message(user_id, msg)
+        return
 
 
 @app.route("/", methods=["POST"])
@@ -234,7 +231,7 @@ def bot():
     user_id = req["source"]["userId"]
     raw_msg = str(req["content"]["text"]).strip()
 
-    Thread(target=handle_message, args=(user_id, raw_msg), daemon=True).start()
+    handle_message(user_id, raw_msg)
 
     return "ok", 200
 
