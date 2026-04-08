@@ -207,7 +207,7 @@ def make_item_row(row):
     left_box = {
         "type": "box",
         "layout": "vertical",
-        "flex": 7,
+        "flex": 8,
         "spacing": "xs",
         "contents": [
             {
@@ -230,11 +230,13 @@ def make_item_row(row):
     if is_valid_uri(pdf_link):
         right_component = {
             "type": "button",
-            "flex": 3,
+            "flex": 2,
+            "height": "sm",
             "style": "primary",
+            "color": "#7B61FF",
             "action": {
                 "type": "uri",
-                "label": "도면 보기",
+                "label": "보기",
                 "uri": pdf_link
             }
         }
@@ -242,7 +244,7 @@ def make_item_row(row):
         right_component = {
             "type": "box",
             "layout": "vertical",
-            "flex": 3,
+            "flex": 2,
             "contents": [
                 {
                     "type": "text",
@@ -426,11 +428,9 @@ def edit_uptimerobot_monitor(status_value):
     }
 
     r = requests.post(url, data=data, headers=headers, timeout=10)
-    print("UPTIMEROBOT STATUS:", r.status_code)
-    print("UPTIMEROBOT RESPONSE:", r.text)
     r.raise_for_status()
 
-    return r.text
+    return "ok"
 
 
 @app.route("/health", methods=["GET"])
