@@ -84,7 +84,7 @@ def send_text_message(user_id, text):
     r.raise_for_status()
 
 
-def send_quick_reply_menu(user_id):
+def send_spec_menu(user_id):
     token = get_token()
 
     url = f"https://www.worksapis.com/v1.0/bots/{BOT_ID}/users/{user_id}/messages"
@@ -96,35 +96,33 @@ def send_quick_reply_menu(user_id):
 
     body = {
         "content": {
-            "type": "text",
-            "text": "스펙 구분을 선택하세요."
-        },
-        "quickReply": {
-            "items": [
+            "type": "button_template",
+            "contentText": "스펙 구분을 선택하세요.",
+            "actions": [
                 {
                     "type": "message",
-                    "title": "ES",
-                    "value": "ES"
+                    "label": "ES",
+                    "text": "ES"
                 },
                 {
                     "type": "message",
-                    "title": "GM",
-                    "value": "GM"
+                    "label": "GM",
+                    "text": "GM"
                 },
                 {
                     "type": "message",
-                    "title": "MS",
-                    "value": "MS"
+                    "label": "MS",
+                    "text": "MS"
                 },
                 {
                     "type": "message",
-                    "title": "RENAULT",
-                    "value": "RENAULT"
+                    "label": "RENAULT",
+                    "text": "RENAULT"
                 },
                 {
                     "type": "message",
-                    "title": "APTIV",
-                    "value": "APTIV"
+                    "label": "APTIV",
+                    "text": "APTIV"
                 }
             ]
         }
@@ -202,8 +200,8 @@ def bot():
     msg = req["content"]["text"].strip().upper()
 
     if msg == "스펙".upper():
-        send_quick_reply_menu(user_id)
-        return "ok", 200
+    send_spec_menu(user_id)
+    return "ok", 200
 
     if msg in ["ES", "GM", "MS", "RENAULT", "APTIV"]:
         send_list_message(user_id, msg)
