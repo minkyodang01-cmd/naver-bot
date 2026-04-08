@@ -4,6 +4,7 @@ import requests
 import os
 import time
 import jwt
+from threading import Thread, Lock
 
 app = Flask(__name__)
 
@@ -11,7 +12,22 @@ BOT_ID = os.environ["BOT_ID"]
 CATEGORY_LIST = ["HKMC", "GM", "RENAULT", "APTIV"]
 CAROUSEL_SIZE = 10
 
+FAQ = {
+    "주소": "부산 강서구 녹산산단 382로 14번가길 9.",
+    "전화번호": "02-1234-5678",
+    "대표번호": "02-1234-5678",
+    "연락처": "02-1234-5678",
+    "팩스": "02-1111-2222",
+    "이메일": "test@example.com",
+    "홈페이지": "https://example.com"
+}
+
+FAQ_UPPER = {k.upper(): v for k, v in FAQ.items()}
+
 data = []
+token_lock = Lock()
+cached_token = None
+cached_token_expire_at = 0
 
 
 def to_int(value, default=0):
@@ -37,44 +53,55 @@ with open("data.csv", newline="", encoding="utf-8-sig") as f:
 
 
 def get_token():
+    global cached_token, cached_token_expire_at
+
     now = int(time.time())
 
-    payload = {
-        "iss": os.environ["CLIENT_ID"],
-        "sub": os.environ["CLIENT_EMAIL"],
-        "iat": now,
-        "exp": now + 3600
-    }
+    with token_lock:
+        if cached_token and now < cached_token_expire_at:
+            return cached_token
 
-    private_key = os.environ["PRIVATE_KEY"].replace("\\n", "\n")
-    jwt_token = jwt.encode(payload, private_key, algorithm="RS256")
+        payload = {
+            "iss": os.environ["CLIENT_ID"],
+            "sub": os.environ["CLIENT_EMAIL"],
+            "iat": now,
+            "exp": now + 3600
+        }
 
-    url = "https://auth.worksmobile.com/oauth2/v2.0/token"
+        private_key = os.environ["PRIVATE_KEY"].replace("\\n", "\n")
+        jwt_token = jwt.encode(payload, private_key, algorithm="RS256")
 
-    token_data = {
-        "assertion": jwt_token,
-        "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
-        "client_id": os.environ["CLIENT_ID"],
-        "client_secret": os.environ["CLIENT_SECRET"],
-        "scope": "bot.message"
-    }
+        url = "https://auth.worksmobile.com/oauth2/v2.0/token"
 
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded"
-    }
+        token_data = {
+            "assertion": jwt_token,
+            "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+            "client_id": os.environ["CLIENT_ID"],
+            "client_secret": os.environ["CLIENT_SECRET"],
+            "scope": "bot.message"
+        }
 
-    r = requests.post(url, data=token_data, headers=headers, timeout=10)
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
 
-    print("TOKEN STATUS:", r.status_code)
-    print("TOKEN RESPONSE:", r.text)
+        r = requests.post(url, data=token_data, headers=headers, timeout=10)
 
-    r.raise_for_status()
-    token_json = r.json()
+        print("TOKEN STATUS:", r.status_code)
+        print("TOKEN RESPONSE:", r.text)
 
-    if "access_token" not in token_json:
-        raise Exception(f"access_token 없음: {token_json}")
+        r.raise_for_status()
+        token_json = r.json()
 
-    return token_json["access_token"]
+        if "access_token" not in token_json:
+            raise Exception(f"access_token 없음: {token_json}")
+
+        cached_token = token_json["access_token"]
+
+        expires_in = to_int(token_json.get("expires_in", 3600), 3600)
+        cached_token_expire_at = now + max(60, expires_in - 120)
+
+        return cached_token
 
 
 def send_request(user_id, body):
@@ -132,7 +159,7 @@ def chunk_list(items, size):
 
 
 def make_carousel_column(row):
-    return {
+    column = {
         "title": row["스펙코드"][:40],
         "text": row["간단설명"][:60] if row["간단설명"] else "설명 없음",
         "actions": [
@@ -171,11 +198,32 @@ def send_carousel_message(user_id, category):
 
         send_request(user_id, body)
 
-        if len(chunks) > 1 and idx < len(chunks):
-            send_text_message(
-                user_id,
-                f"{category} {idx}/{len(chunks)}"
-            )
+
+def handle_message(user_id, raw_msg):
+    try:
+        raw_msg = str(raw_msg).strip()
+        msg = raw_msg.upper()
+
+        if msg in FAQ_UPPER:
+            send_text_message(user_id, FAQ_UPPER[msg])
+            return
+
+        if msg in ["스펙".upper(), "SPEC"]:
+            send_category_menu(user_id)
+            return
+
+        if msg.startswith("CAT|"):
+            category = msg.split("|", 1)[1].strip().upper()
+            if category in CATEGORY_LIST:
+                send_carousel_message(user_id, category)
+            return
+
+        if msg in CATEGORY_LIST:
+            send_carousel_message(user_id, msg)
+            return
+
+    except Exception as e:
+        print("HANDLE ERROR:", str(e))
 
 
 @app.route("/", methods=["POST"])
@@ -184,21 +232,9 @@ def bot():
     print("CALLBACK JSON:", req)
 
     user_id = req["source"]["userId"]
-    msg = str(req["content"]["text"]).strip().upper()
+    raw_msg = str(req["content"]["text"]).strip()
 
-    if msg in ["스펙".upper(), "SPEC"]:
-        send_category_menu(user_id)
-        return "ok", 200
-
-    if msg.startswith("CAT|"):
-        category = msg.split("|", 1)[1].strip().upper()
-        if category in CATEGORY_LIST:
-            send_carousel_message(user_id, category)
-        return "ok", 200
-
-    if msg in CATEGORY_LIST:
-        send_carousel_message(user_id, msg)
-        return "ok", 200
+    Thread(target=handle_message, args=(user_id, raw_msg), daemon=True).start()
 
     return "ok", 200
 
