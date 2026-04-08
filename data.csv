@@ -1,10 +1,12 @@
-구분,페이지,정렬순서,스펙코드,스펙명,간단설명,PDF링크,이미지링크,사용여부,비고
-HKMC,1,1,ES91409-00 ,,열수축 일반 방수용 접착 튜브,https://works.do/5JJWWt1,,Y,
-HKMC,1,1,,,,,,,
-HKMC,1,1,,,,,,,
-HKMC,1,1,,,,,,,
-GM,1,1,,,,,,,
-GM,1,1,,,,,,,
-GM,1,1,,,,,,,
-RENAULT,1,1,,,,,,,
-APTIV,1,1,,,,,,,
+구분,페이지,정렬순서,스펙코드,간단설명,PDF링크,이미지링크,사용여부
+HKMC,1,1,ES91409-00 ,열수축 일반 방수용 접착 튜브,https://works.do/5JJWWt1,,Y
+HKMC,1,2,ES91409-00 ,열수축 일반 방수용 접착 튜브,https://works.do/5JJWWt1,,Y
+HKMC,1,3,ES91409-00 ,열수축 일반 방수용 접착 튜브,https://works.do/5JJWWt1,,Y
+HKMC,1,4,ES91409-00 ,열수축 일반 방수용 접착 튜브,https://works.do/5JJWWt1,,Y
+HKMC,2,1,ES91409-00 ,열수축 일반 방수용 접착 튜브,https://works.do/5JJWWt1,,Y
+HKMC,2,2,ES91409-00 ,열수축 일반 방수용 접착 튜브,https://works.do/5JJWWt1,,Y
+GM,1,1,,,,,
+GM,1,1,,,,,
+GM,1,1,,,,,
+RENAULT,1,1,,,,,
+APTIV,1,1,,,,,
