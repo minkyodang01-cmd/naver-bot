@@ -200,14 +200,13 @@ def bot():
     msg = req["content"]["text"].strip().upper()
 
     if msg == "스펙".upper():
-    send_spec_menu(user_id)
-    return "ok", 200
+        send_spec_menu(user_id)
+        return "ok", 200
 
     if msg in ["ES", "GM", "MS", "RENAULT", "APTIV"]:
         send_list_message(user_id, msg)
         return "ok", 200
 
     return "ok", 200
-
 
 app.run(host="0.0.0.0", port=10000)
