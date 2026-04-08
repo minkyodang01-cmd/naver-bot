@@ -254,6 +254,10 @@ def bot():
         except Exception as send_err:
             print("ERROR NOTICE FAILED:", str(send_err))
 
+    @app.route("/health", methods=["GET"])
+def health():
+    return "ok", 200
+
     return "ok", 200
 
 
