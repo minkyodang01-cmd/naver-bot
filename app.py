@@ -59,7 +59,7 @@ def get_token():
     return token_json["access_token"]
 
 
-def send_message(user_id, text):
+def send_text_message(user_id, text):
     token = get_token()
 
     url = f"https://www.worksapis.com/v1.0/bots/{BOT_ID}/users/{user_id}/messages"
@@ -78,8 +78,116 @@ def send_message(user_id, text):
 
     r = requests.post(url, headers=headers, json=body, timeout=10)
 
-    print("SEND STATUS:", r.status_code)
-    print("SEND RESPONSE:", r.text)
+    print("TEXT STATUS:", r.status_code)
+    print("TEXT RESPONSE:", r.text)
+
+    r.raise_for_status()
+
+
+def send_quick_reply_menu(user_id):
+    token = get_token()
+
+    url = f"https://www.worksapis.com/v1.0/bots/{BOT_ID}/users/{user_id}/messages"
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+
+    body = {
+        "content": {
+            "type": "text",
+            "text": "스펙 구분을 선택하세요."
+        },
+        "quickReply": {
+            "items": [
+                {
+                    "type": "message",
+                    "title": "ES",
+                    "value": "ES"
+                },
+                {
+                    "type": "message",
+                    "title": "GM",
+                    "value": "GM"
+                },
+                {
+                    "type": "message",
+                    "title": "MS",
+                    "value": "MS"
+                },
+                {
+                    "type": "message",
+                    "title": "RENAULT",
+                    "value": "RENAULT"
+                },
+                {
+                    "type": "message",
+                    "title": "APTIV",
+                    "value": "APTIV"
+                }
+            ]
+        }
+    }
+
+    r = requests.post(url, headers=headers, json=body, timeout=10)
+
+    print("MENU STATUS:", r.status_code)
+    print("MENU RESPONSE:", r.text)
+
+    r.raise_for_status()
+
+
+def send_list_message(user_id, category):
+    token = get_token()
+
+    url = f"https://www.worksapis.com/v1.0/bots/{BOT_ID}/users/{user_id}/messages"
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+
+    elements = []
+
+    for row in data:
+        if row["구분"].strip().upper() == category:
+            elements.append({
+                "title": row["스펙코드"],
+                "subtitle": row["간단설명"],
+                "buttons": [
+                    {
+                        "type": "uri",
+                        "label": "보기",
+                        "uri": row["PDF링크"]
+                    }
+                ]
+            })
+
+    if not elements:
+        send_text_message(user_id, f"{category} 목록이 없습니다.")
+        return
+
+    body = {
+        "content": {
+            "type": "template",
+            "template": {
+                "type": "list",
+                "cover": {
+                    "title": f"{category} 스펙 목록",
+                    "data": {
+                        "backgroundColor": "#03A9F4"
+                    }
+                },
+                "elements": elements[:10]
+            }
+        }
+    }
+
+    r = requests.post(url, headers=headers, json=body, timeout=10)
+
+    print("LIST STATUS:", r.status_code)
+    print("LIST RESPONSE:", r.text)
 
     r.raise_for_status()
 
@@ -93,14 +201,13 @@ def bot():
     user_id = req["source"]["userId"]
     msg = req["content"]["text"].strip().upper()
 
-    if msg == "ES":
-        result = "[ES 스펙 목록]\n\n"
-        for row in data:
-            if row["구분"] == "ES":
-                result += f"{row['스펙코드']} - {row['간단설명']}\n"
-                result += f"{row['PDF링크']}\n\n"
+    if msg == "스펙".upper():
+        send_quick_reply_menu(user_id)
+        return "ok", 200
 
-        send_message(user_id, result)
+    if msg in ["ES", "GM", "MS", "RENAULT", "APTIV"]:
+        send_list_message(user_id, msg)
+        return "ok", 200
 
     return "ok", 200
 
