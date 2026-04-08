@@ -18,16 +18,36 @@ with open('data.csv', newline='', encoding='utf-8-sig') as f:
             data.append(row)
 
 def get_token():
-    url = "https://auth.worksmobile.com/oauth2/v2.0/token"
-
+    now = int(time.time())
+    
     payload = {
-        "grant_type": "client_credentials",
-        "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET,
-        "scope": "bot.message"
+        "iss": os.environ["CLIENT_EMAIL"],
+        "sub": os.environ["CLIENT_EMAIL"],
+        "iat": now,
+        "exp": now + 3600
     }
 
-    r = requests.post(url, data=payload)
+    private_key = os.environ["PRIVATE_KEY"]
+
+    jwt_token = jwt.encode(payload, private_key, algorithm="RS256")
+
+    url = "https://auth.worksmobile.com/oauth2/v2.0/token"
+
+    data = {
+        "assertion": jwt_token,
+        "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+        "client_id": os.environ["CLIENT_ID"],
+        "scope": "bot"
+    }
+
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+
+    r = requests.post(url, data=data, headers=headers)
+
+    print(r.text)
+
     return r.json()["access_token"]
 
 def send_message(user_id, text):
