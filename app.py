@@ -132,9 +132,9 @@ def chunk_list(items, size):
 
 
 def make_carousel_column(row):
-    column = {
-        "title": row["스펙코드"],
-        "text": row["간단설명"] if row["간단설명"] else "설명 없음",
+    return {
+        "title": row["스펙코드"][:40],
+        "text": row["간단설명"][:60] if row["간단설명"] else "설명 없음",
         "actions": [
             {
                 "type": "uri",
@@ -159,7 +159,7 @@ def send_carousel_message(user_id, category):
 
     chunks = chunk_list(rows, CAROUSEL_SIZE)
 
-    for idx, chunk in enumerate(chunks, start=1):
+    for chunk in chunks:
         columns = [make_carousel_column(row) for row in chunk]
 
         body = {
