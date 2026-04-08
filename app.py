@@ -23,13 +23,15 @@ FAQ = {
     "이메일": "대표: test@example.com\n기술문의: tech@example.com",
     "홈페이지": "https://example.com"
 }
-
 FAQ_UPPER = {k.upper(): v for k, v in FAQ.items()}
 
 data = []
+
 token_lock = Lock()
 cached_token = None
 cached_token_expire_at = 0
+
+session = requests.Session()
 
 
 def to_int(value, default=0):
@@ -54,13 +56,13 @@ with open("data.csv", newline="", encoding="utf-8-sig") as f:
             data.append(cleaned)
 
 
-def get_token():
+def get_token(force_refresh=False):
     global cached_token, cached_token_expire_at
 
     now = int(time.time())
 
     with token_lock:
-        if cached_token and now < cached_token_expire_at:
+        if not force_refresh and cached_token and now < cached_token_expire_at:
             return cached_token
 
         payload = {
@@ -87,7 +89,7 @@ def get_token():
             "Content-Type": "application/x-www-form-urlencoded"
         }
 
-        r = requests.post(url, data=token_data, headers=headers, timeout=10)
+        r = session.post(url, data=token_data, headers=headers, timeout=10)
 
         print("TOKEN STATUS:", r.status_code)
         print("TOKEN RESPONSE:", r.text)
@@ -115,10 +117,18 @@ def send_request(user_id, body):
         "Content-Type": "application/json"
     }
 
-    r = requests.post(url, headers=headers, json=body, timeout=10)
+    r = session.post(url, headers=headers, json=body, timeout=10)
 
     print("SEND STATUS:", r.status_code)
     print("SEND RESPONSE:", r.text)
+
+    if r.status_code == 401:
+        token = get_token(force_refresh=True)
+        headers["Authorization"] = f"Bearer {token}"
+        r = session.post(url, headers=headers, json=body, timeout=10)
+
+        print("RETRY SEND STATUS:", r.status_code)
+        print("RETRY SEND RESPONSE:", r.text)
 
     r.raise_for_status()
 
@@ -160,7 +170,7 @@ def chunk_list(items, size):
 
 
 def make_carousel_column(row):
-    column = {
+    return {
         "title": row["스펙코드"][:40],
         "text": row["간단설명"][:60] if row["간단설명"] else "설명 없음",
         "actions": [
@@ -172,11 +182,6 @@ def make_carousel_column(row):
         ]
     }
 
-    if row["이미지링크"]:
-        column["thumbnailImageUrl"] = row["이미지링크"]
-
-    return column
-
 
 def send_carousel_message(user_id, category):
     rows = get_rows_by_category(category)
@@ -185,7 +190,16 @@ def send_carousel_message(user_id, category):
         send_text_message(user_id, f"{category} 목록이 없습니다.")
         return
 
-    chunks = chunk_list(rows, CAROUSEL_SIZE)
+    valid_rows = []
+    for row in rows:
+        if row["스펙코드"] and row["PDF링크"]:
+            valid_rows.append(row)
+
+    if not valid_rows:
+        send_text_message(user_id, f"{category} 유효한 데이터가 없습니다.")
+        return
+
+    chunks = chunk_list(valid_rows, CAROUSEL_SIZE)
 
     for chunk in chunks:
         columns = [make_carousel_column(row) for row in chunk]
@@ -231,7 +245,14 @@ def bot():
     user_id = req["source"]["userId"]
     raw_msg = str(req["content"]["text"]).strip()
 
-    handle_message(user_id, raw_msg)
+    try:
+        handle_message(user_id, raw_msg)
+    except Exception as e:
+        print("HANDLE ERROR:", str(e))
+        try:
+            send_text_message(user_id, "처리 중 오류가 발생했습니다.")
+        except Exception as send_err:
+            print("ERROR NOTICE FAILED:", str(send_err))
 
     return "ok", 200
 
