@@ -1,5 +1,6 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request
 import csv
+import json
 
 app = Flask(__name__)
 
@@ -13,29 +14,12 @@ with open('data.csv', newline='', encoding='utf-8-sig') as f:
 
 @app.route("/", methods=["POST"])
 def bot():
-    req = request.json
-    msg = req.get("content", {}).get("text", "").upper()
+    req = request.get_json(force=True, silent=True)
 
-    if msg == "ES":
-        result = "[ES 스펙 목록]\n\n"
+    print("=== CALLBACK JSON START ===")
+    print(json.dumps(req, ensure_ascii=False))
+    print("=== CALLBACK JSON END ===")
 
-        for row in data:
-            if row['구분'] == 'ES':
-                result += f"{row['스펙코드']} - {row['간단설명']}\n"
-                result += f"다운로드: {row['PDF링크']}\n\n"
-
-        return jsonify({
-            "content": {
-                "type": "text",
-                "text": result
-            }
-        })
-
-    return jsonify({
-        "content": {
-            "type": "text",
-            "text": "ES 또는 SPEC 입력하세요"
-        }
-    })
+    return "ok", 200
 
 app.run(host="0.0.0.0", port=10000)
