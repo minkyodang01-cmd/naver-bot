@@ -4,14 +4,11 @@ import requests
 import os
 import time
 import jwt
-import math
 
 app = Flask(__name__)
 
 BOT_ID = os.environ["BOT_ID"]
-
-CATEGORY_LIST = ["ES", "GM", "MS", "RENAULT", "APTIV"]
-PAGE_SIZE = 4
+CATEGORY_LIST = ["HKMC", "GM", "RENAULT", "APTIV"]
 
 data = []
 
@@ -113,9 +110,8 @@ def send_category_menu(user_id):
             "type": "button_template",
             "contentText": "스펙 구분을 선택하세요.",
             "actions": [
-                {"type": "message", "label": "ES", "text": "CAT|ES"},
+                {"type": "message", "label": "HKMC", "text": "CAT|HKMC"},
                 {"type": "message", "label": "GM", "text": "CAT|GM"},
-                {"type": "message", "label": "MS", "text": "CAT|MS"},
                 {"type": "message", "label": "RENAULT", "text": "CAT|RENAULT"},
                 {"type": "message", "label": "APTIV", "text": "CAT|APTIV"}
             ]
@@ -124,42 +120,57 @@ def send_category_menu(user_id):
     send_request(user_id, body)
 
 
-def get_rows_by_category(category):
-    rows = [row for row in data if row["구분"] == category]
-    rows.sort(key=lambda x: (x["페이지"], x["정렬순서"], x["스펙코드"]))
-    return rows
+def get_pages_by_category(category):
+    pages = sorted(
+        list({row["페이지"] for row in data if row["구분"] == category})
+    )
+    return pages
 
 
-def get_total_pages(category):
-    rows = get_rows_by_category(category)
-    if not rows:
-        return 0
-    return math.ceil(len(rows) / PAGE_SIZE)
+def send_page_menu(user_id, category):
+    pages = get_pages_by_category(category)
 
-
-def get_page_rows(category, page):
-    rows = get_rows_by_category(category)
-    start = (page - 1) * PAGE_SIZE
-    end = start + PAGE_SIZE
-    return rows[start:end]
-
-
-def send_list_message(user_id, category, page):
-    total_pages = get_total_pages(category)
-
-    if total_pages == 0:
+    if not pages:
         send_text_message(user_id, f"{category} 목록이 없습니다.")
         return
 
-    if page < 1:
-        page = 1
-    if page > total_pages:
-        page = total_pages
+    if len(pages) == 1:
+        send_list_message(user_id, category, pages[0])
+        return
 
-    rows = get_page_rows(category, page)
+    actions = []
+    for page in pages[:10]:
+        actions.append({
+            "type": "message",
+            "label": f"{page}페이지",
+            "text": f"PAGE|{category}|{page}"
+        })
+
+    body = {
+        "content": {
+            "type": "button_template",
+            "contentText": f"{category} 페이지를 선택하세요.",
+            "actions": actions
+        }
+    }
+
+    send_request(user_id, body)
+
+
+def send_list_message(user_id, category, page):
+    rows = [
+        row for row in data
+        if row["구분"] == category and row["페이지"] == page
+    ]
+
+    rows.sort(key=lambda x: x["정렬순서"])
+
+    if not rows:
+        send_text_message(user_id, f"{category} {page}페이지 목록이 없습니다.")
+        return
 
     elements = []
-    for row in rows:
+    for row in rows[:4]:
         elements.append({
             "title": row["스펙코드"],
             "subtitle": row["간단설명"],
@@ -173,31 +184,33 @@ def send_list_message(user_id, category, page):
     body = {
         "content": {
             "type": "list_template",
-            "headerText": f"{category} 스펙 목록 {page}/{total_pages}",
+            "headerText": f"{category} {page}페이지",
             "elements": elements
         }
     }
 
     send_request(user_id, body)
+    send_page_nav(user_id, category, page)
 
-    send_page_nav(user_id, category, page, total_pages)
 
+def send_page_nav(user_id, category, current_page):
+    pages = get_pages_by_category(category)
+    max_page = max(pages) if pages else 1
 
-def send_page_nav(user_id, category, page, total_pages):
     actions = []
 
-    if page > 1:
+    if current_page > 1:
         actions.append({
             "type": "message",
             "label": "이전",
-            "text": f"PAGE|{category}|{page - 1}"
+            "text": f"PAGE|{category}|{current_page - 1}"
         })
 
-    if page < total_pages:
+    if current_page < max_page:
         actions.append({
             "type": "message",
             "label": "다음",
-            "text": f"PAGE|{category}|{page + 1}"
+            "text": f"PAGE|{category}|{current_page + 1}"
         })
 
     actions.append({
@@ -215,7 +228,7 @@ def send_page_nav(user_id, category, page, total_pages):
     body = {
         "content": {
             "type": "button_template",
-            "contentText": f"{category} {page}/{total_pages}",
+            "contentText": f"{category} {current_page}/{max_page}",
             "actions": actions[:10]
         }
     }
@@ -238,7 +251,7 @@ def bot():
     if msg.startswith("CAT|"):
         category = msg.split("|", 1)[1].strip().upper()
         if category in CATEGORY_LIST:
-            send_list_message(user_id, category, 1)
+            send_page_menu(user_id, category)
         return "ok", 200
 
     if msg.startswith("PAGE|"):
@@ -251,7 +264,7 @@ def bot():
         return "ok", 200
 
     if msg in CATEGORY_LIST:
-        send_list_message(user_id, msg, 1)
+        send_page_menu(user_id, msg)
         return "ok", 200
 
     return "ok", 200
