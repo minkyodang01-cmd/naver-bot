@@ -16,9 +16,9 @@ with open('data.csv', newline='', encoding='utf-8-sig') as f:
 def bot():
     req = request.get_json(force=True, silent=True)
 
-    print("=== CALLBACK JSON START ===")
-    print(json.dumps(req, ensure_ascii=False))
-    print("=== CALLBACK JSON END ===")
+    print("=== CALLBACK JSON START ===", flush=True)
+    print(json.dumps(req, ensure_ascii=False), flush=True)
+    print("=== CALLBACK JSON END ===", flush=True)
 
     return "ok", 200
 
