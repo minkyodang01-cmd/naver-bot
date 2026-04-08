@@ -230,6 +230,30 @@ def send_carousel_message(user_id, category):
         send_request(user_id, body)
 
 
+def edit_uptimerobot_monitor(status_value):
+    api_key = os.environ["UPTIMEROBOT_API_KEY"]
+    monitor_id = os.environ["UPTIMEROBOT_MONITOR_ID"]
+
+    url = "https://api.uptimerobot.com/v2/editMonitor"
+
+    data = {
+        "api_key": api_key,
+        "id": monitor_id,
+        "status": status_value
+    }
+
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+
+    r = requests.post(url, data=data, headers=headers, timeout=10)
+    print("UPTIMEROBOT STATUS:", r.status_code)
+    print("UPTIMEROBOT RESPONSE:", r.text)
+    r.raise_for_status()
+
+    return r.text
+
+
 def handle_message(user_id, raw_msg):
     raw_msg = str(raw_msg).strip()
     msg_normalized = normalize_text(raw_msg)
@@ -264,6 +288,18 @@ def handle_message(user_id, raw_msg):
 @app.route("/health", methods=["GET"])
 def health():
     return "ok", 200
+
+
+@app.route("/pause", methods=["GET"])
+def pause_monitor():
+    edit_uptimerobot_monitor(0)
+    return "paused", 200
+
+
+@app.route("/resume", methods=["GET"])
+def resume_monitor():
+    edit_uptimerobot_monitor(1)
+    return "resumed", 200
 
 
 @app.route("/", methods=["GET"])
