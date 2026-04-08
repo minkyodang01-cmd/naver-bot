@@ -5,13 +5,12 @@ import os
 import time
 import jwt
 from threading import Lock
-from difflib import get_close_matches
+from math import ceil
 
 app = Flask(__name__)
 
 BOT_ID = os.environ["BOT_ID"]
 CATEGORY_LIST = ["HKMC", "GM", "RENAULT", "APTIV"]
-CAROUSEL_SIZE = 10
 
 FAQ = {
     "주소": "서울시 ...\n한미케이블 본사",
@@ -24,6 +23,7 @@ FAQ = {
     "이메일": "대표: test@example.com\n기술문의: tech@example.com",
     "홈페이지": "https://example.com"
 }
+FAQ_UPPER = {k.upper(): v for k, v in FAQ.items()}
 
 data = []
 
@@ -33,18 +33,11 @@ cached_token_expire_at = 0
 
 session = requests.Session()
 
-
-def normalize_text(text):
-    return str(text).strip().upper().replace(" ", "")
-
-
-FAQ_NORMALIZED = {normalize_text(k): v for k, v in FAQ.items()}
-
-
-def find_similar_faq_key(msg):
-    keys = list(FAQ_NORMALIZED.keys())
-    matches = get_close_matches(msg, keys, n=1, cutoff=0.7)
-    return matches[0] if matches else None
+# 한 페이지에 표시할 항목 수
+ROWS_PER_PAGE = 10
+# 한 Flex Carousel 안에 넣을 페이지 수
+# 공식 문서상 bubble 최대 10개
+PAGES_PER_MESSAGE = 10
 
 
 def to_int(value, default=0):
@@ -54,20 +47,21 @@ def to_int(value, default=0):
         return default
 
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CSV_PATH = os.path.join(BASE_DIR, "data.csv")
+def safe_str(value):
+    return str(value or "").strip()
 
-with open(CSV_PATH, newline="", encoding="utf-8-sig") as f:
+
+with open("data.csv", newline="", encoding="utf-8-sig") as f:
     reader = csv.DictReader(f)
     for row in reader:
-        if str(row.get("사용여부", "")).strip().upper() == "Y":
+        if safe_str(row.get("사용여부", "")).upper() == "Y":
             cleaned = {
-                "구분": str(row.get("구분", "")).strip().upper(),
+                "구분": safe_str(row.get("구분", "")).upper(),
                 "정렬순서": to_int(row.get("정렬순서", 9999), 9999),
-                "스펙코드": str(row.get("스펙코드", "")).strip(),
-                "간단설명": str(row.get("간단설명", "")).strip(),
-                "PDF링크": str(row.get("PDF링크", "")).strip(),
-                "이미지링크": str(row.get("이미지링크", "")).strip()
+                "스펙코드": safe_str(row.get("스펙코드", "")),
+                "간단설명": safe_str(row.get("간단설명", "")),
+                "PDF링크": safe_str(row.get("PDF링크", "")),
+                "이미지링크": safe_str(row.get("이미지링크", ""))
             }
             data.append(cleaned)
 
@@ -185,104 +179,176 @@ def chunk_list(items, size):
     return [items[i:i + size] for i in range(0, len(items), size)]
 
 
-def make_carousel_column(row):
-    return {
-        "title": row["스펙코드"][:40],
-        "text": row["간단설명"][:60] if row["간단설명"] else "설명 없음",
-        "actions": [
-            {
+def make_item_row(row):
+    spec_code = row["스펙코드"][:30] if row["스펙코드"] else "-"
+    desc = row["간단설명"][:70] if row["간단설명"] else "설명 없음"
+    pdf_link = row["PDF링크"]
+
+    row_contents = [
+        {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "xs",
+            "flex": 7,
+            "contents": [
+                {
+                    "type": "text",
+                    "text": spec_code,
+                    "weight": "bold",
+                    "size": "sm",
+                    "wrap": True
+                },
+                {
+                    "type": "text",
+                    "text": desc,
+                    "size": "xs",
+                    "color": "#666666",
+                    "wrap": True
+                }
+            ]
+        }
+    ]
+
+    if pdf_link:
+        row_contents.append({
+            "type": "button",
+            "style": "primary",
+            "height": "sm",
+            "color": "#1F64FF",
+            "flex": 3,
+            "action": {
                 "type": "uri",
-                "label": "보기",
-                "uri": row["PDF링크"]
+                "label": "도면 보기",
+                "uri": pdf_link
+            }
+        })
+    else:
+        row_contents.append({
+            "type": "text",
+            "text": "링크 없음",
+            "size": "xs",
+            "color": "#999999",
+            "align": "end",
+            "flex": 3
+        })
+
+    return {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "sm",
+        "margin": "md",
+        "contents": [
+            {
+                "type": "box",
+                "layout": "horizontal",
+                "spacing": "md",
+                "contents": row_contents
+            },
+            {
+                "type": "separator",
+                "margin": "md"
             }
         ]
     }
 
 
-def send_carousel_message(user_id, category):
-    rows = get_rows_by_category(category)
+def make_page_bubble(category, page_rows, page_no, total_pages, total_count):
+    body_contents = [
+        {
+            "type": "text",
+            "text": f"{category} 목록",
+            "weight": "bold",
+            "size": "lg",
+            "wrap": True
+        },
+        {
+            "type": "text",
+            "text": f"{page_no} / {total_pages} 페이지   총 {total_count}건",
+            "size": "xs",
+            "color": "#666666",
+            "margin": "sm"
+        }
+    ]
 
-    if not rows:
+    for row in page_rows:
+        body_contents.append(make_item_row(row))
+
+    return {
+        "type": "bubble",
+        "size": "mega",
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "paddingAll": "16px",
+            "contents": body_contents
+        }
+    }
+
+
+def send_flex_pages(user_id, category, all_rows):
+    if not all_rows:
         send_text_message(user_id, f"{category} 목록이 없습니다.")
         return
 
-    valid_rows = []
-    for row in rows:
-        if row["스펙코드"] and row["PDF링크"]:
-            valid_rows.append(row)
+    page_chunks = chunk_list(all_rows, ROWS_PER_PAGE)
+    total_pages = len(page_chunks)
+    total_count = len(all_rows)
 
-    if not valid_rows:
-        send_text_message(user_id, f"{category} 유효한 데이터가 없습니다.")
-        return
+    # 한 메시지 안에는 최대 10페이지까지만 가능
+    # 11페이지 이상이면 여러 메시지로 나눠 전송
+    carousel_groups = chunk_list(list(enumerate(page_chunks, start=1)), PAGES_PER_MESSAGE)
 
-    chunks = chunk_list(valid_rows, CAROUSEL_SIZE)
+    for group in carousel_groups:
+        bubbles = []
 
-    for chunk in chunks:
-        columns = [make_carousel_column(row) for row in chunk]
+        for page_no, page_rows in group:
+            bubble = make_page_bubble(
+                category=category,
+                page_rows=page_rows,
+                page_no=page_no,
+                total_pages=total_pages,
+                total_count=total_count
+            )
+            bubbles.append(bubble)
 
         body = {
             "content": {
-                "type": "carousel",
-                "columns": columns
+                "type": "flex",
+                "altText": f"{category} 스펙 목록",
+                "contents": {
+                    "type": "carousel",
+                    "contents": bubbles
+                }
             }
         }
 
         send_request(user_id, body)
 
 
-def edit_uptimerobot_monitor(status_value):
-    api_key = os.environ["UPTIMEROBOT_API_KEY"]
-    monitor_id = os.environ["UPTIMEROBOT_MONITOR_ID"]
-
-    url = "https://api.uptimerobot.com/v2/editMonitor"
-
-    data = {
-        "api_key": api_key,
-        "id": monitor_id,
-        "status": status_value
-    }
-
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded"
-    }
-
-    r = requests.post(url, data=data, headers=headers, timeout=10)
-    print("UPTIMEROBOT STATUS:", r.status_code)
-    print("UPTIMEROBOT RESPONSE:", r.text)
-    r.raise_for_status()
-
-    return r.text
-
-
 def handle_message(user_id, raw_msg):
-    raw_msg = str(raw_msg).strip()
-    msg_normalized = normalize_text(raw_msg)
-    msg_upper = str(raw_msg).strip().upper()
+    raw_msg = safe_str(raw_msg)
+    msg = raw_msg.upper()
 
-    if msg_normalized in FAQ_NORMALIZED:
-        send_text_message(user_id, FAQ_NORMALIZED[msg_normalized])
+    if msg in FAQ_UPPER:
+        send_text_message(user_id, FAQ_UPPER[msg])
         return
 
-    similar_key = find_similar_faq_key(msg_normalized)
-    if similar_key:
-        send_text_message(user_id, FAQ_NORMALIZED[similar_key])
-        return
-
-    if msg_normalized in ["스펙", "스팩", "SPEC"]:
+    if msg in ["스펙", "SPEC"]:
         send_category_menu(user_id)
         return
 
-    if msg_upper.startswith("CAT|"):
-        category = msg_upper.split("|", 1)[1].strip().upper()
+    if msg.startswith("CAT|"):
+        category = msg.split("|", 1)[1].strip().upper()
         if category in CATEGORY_LIST:
-            send_carousel_message(user_id, category)
-            return
-
-    if msg_upper in CATEGORY_LIST:
-        send_carousel_message(user_id, msg_upper)
+            rows = get_rows_by_category(category)
+            send_flex_pages(user_id, category, rows)
         return
 
-    send_text_message(user_id, "원하시는 기능을 찾지 못했습니다.\n스펙 또는 회사 정보를 입력해 주세요.")
+    if msg in CATEGORY_LIST:
+        rows = get_rows_by_category(msg)
+        send_flex_pages(user_id, msg, rows)
+        return
 
 
 @app.route("/health", methods=["GET"])
@@ -291,20 +357,13 @@ def health():
 
 
 @app.route("/pause", methods=["GET"])
-def pause_monitor():
-    edit_uptimerobot_monitor(0)
-    return "paused", 200
+def pause():
+    return "pause endpoint ready", 200
 
 
 @app.route("/resume", methods=["GET"])
-def resume_monitor():
-    edit_uptimerobot_monitor(1)
-    return "resumed", 200
-
-
-@app.route("/", methods=["GET"])
-def home():
-    return "ok", 200
+def resume():
+    return "resume endpoint ready", 200
 
 
 @app.route("/", methods=["POST"])
@@ -313,7 +372,7 @@ def bot():
     print("CALLBACK JSON:", req)
 
     user_id = req["source"]["userId"]
-    raw_msg = str(req["content"]["text"]).strip()
+    raw_msg = safe_str(req["content"]["text"])
 
     try:
         handle_message(user_id, raw_msg)
