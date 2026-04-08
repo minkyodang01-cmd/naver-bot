@@ -7,7 +7,7 @@ import jwt
 
 app = Flask(__name__)
 
-BOT_ID = "11904007"
+BOT_ID = os.environ["BOT_ID"]
 
 data = []
 
@@ -29,7 +29,6 @@ def get_token():
     }
 
     private_key = os.environ["PRIVATE_KEY"].replace("\\n", "\n")
-
     jwt_token = jwt.encode(payload, private_key, algorithm="RS256")
 
     url = "https://auth.worksmobile.com/oauth2/v2.0/token"
@@ -38,7 +37,8 @@ def get_token():
         "assertion": jwt_token,
         "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
         "client_id": os.environ["CLIENT_ID"],
-        "scope": "bot"
+        "client_secret": os.environ["CLIENT_SECRET"],
+        "scope": "bot.message"
     }
 
     headers = {
