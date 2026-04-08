@@ -5,6 +5,7 @@ import os
 import time
 import jwt
 from threading import Lock
+from difflib import get_close_matches
 
 app = Flask(__name__)
 
@@ -23,7 +24,6 @@ FAQ = {
     "이메일": "대표: test@example.com\n기술문의: tech@example.com",
     "홈페이지": "https://example.com"
 }
-FAQ_UPPER = {k.upper(): v for k, v in FAQ.items()}
 
 data = []
 
@@ -34,14 +34,30 @@ cached_token_expire_at = 0
 session = requests.Session()
 
 
+def normalize_text(text):
+    return str(text).strip().upper().replace(" ", "")
+
+
+FAQ_NORMALIZED = {normalize_text(k): v for k, v in FAQ.items()}
+
+
+def find_similar_faq_key(msg):
+    keys = list(FAQ_NORMALIZED.keys())
+    matches = get_close_matches(msg, keys, n=1, cutoff=0.7)
+    return matches[0] if matches else None
+
+
 def to_int(value, default=0):
     try:
         return int(str(value).strip())
-    except:
+    except Exception:
         return default
 
 
-with open("data.csv", newline="", encoding="utf-8-sig") as f:
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CSV_PATH = os.path.join(BASE_DIR, "data.csv")
+
+with open(CSV_PATH, newline="", encoding="utf-8-sig") as f:
     reader = csv.DictReader(f)
     for row in reader:
         if str(row.get("사용여부", "")).strip().upper() == "Y":
@@ -216,25 +232,43 @@ def send_carousel_message(user_id, category):
 
 def handle_message(user_id, raw_msg):
     raw_msg = str(raw_msg).strip()
-    msg = raw_msg.upper()
+    msg_normalized = normalize_text(raw_msg)
+    msg_upper = str(raw_msg).strip().upper()
 
-    if msg in FAQ_UPPER:
-        send_text_message(user_id, FAQ_UPPER[msg])
+    if msg_normalized in FAQ_NORMALIZED:
+        send_text_message(user_id, FAQ_NORMALIZED[msg_normalized])
         return
 
-    if msg in ["스펙".upper(), "SPEC"]:
+    similar_key = find_similar_faq_key(msg_normalized)
+    if similar_key:
+        send_text_message(user_id, FAQ_NORMALIZED[similar_key])
+        return
+
+    if msg_normalized in ["스펙", "스팩", "SPEC"]:
         send_category_menu(user_id)
         return
 
-    if msg.startswith("CAT|"):
-        category = msg.split("|", 1)[1].strip().upper()
+    if msg_upper.startswith("CAT|"):
+        category = msg_upper.split("|", 1)[1].strip().upper()
         if category in CATEGORY_LIST:
             send_carousel_message(user_id, category)
+            return
+
+    if msg_upper in CATEGORY_LIST:
+        send_carousel_message(user_id, msg_upper)
         return
 
-    if msg in CATEGORY_LIST:
-        send_carousel_message(user_id, msg)
-        return
+    send_text_message(user_id, "원하시는 기능을 찾지 못했습니다.\n스펙 또는 회사 정보를 입력해 주세요.")
+
+
+@app.route("/health", methods=["GET"])
+def health():
+    return "ok", 200
+
+
+@app.route("/", methods=["GET"])
+def home():
+    return "ok", 200
 
 
 @app.route("/", methods=["POST"])
@@ -254,11 +288,9 @@ def bot():
         except Exception as send_err:
             print("ERROR NOTICE FAILED:", str(send_err))
 
-    @app.route("/health", methods=["GET"])
-def health():
-    return "ok", 200
-
     return "ok", 200
 
 
-app.run(host="0.0.0.0", port=10000)
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
