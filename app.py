@@ -5,7 +5,7 @@ import os
 import time
 import jwt
 from threading import Lock
-from math import ceil
+from difflib import get_close_matches
 
 app = Flask(__name__)
 
@@ -23,7 +23,9 @@ FAQ = {
     "이메일": "대표: test@example.com\n기술문의: tech@example.com",
     "홈페이지": "https://example.com"
 }
-FAQ_UPPER = {k.upper(): v for k, v in FAQ.items()}
+
+ROWS_PER_PAGE = 10
+MAX_BUBBLES_PER_MESSAGE = 10
 
 data = []
 
@@ -33,11 +35,18 @@ cached_token_expire_at = 0
 
 session = requests.Session()
 
-# 한 페이지에 표시할 항목 수
-ROWS_PER_PAGE = 10
-# 한 Flex Carousel 안에 넣을 페이지 수
-# 공식 문서상 bubble 최대 10개
-PAGES_PER_MESSAGE = 10
+
+def normalize_text(text):
+    return str(text or "").strip().upper().replace(" ", "")
+
+
+FAQ_NORMALIZED = {normalize_text(k): v for k, v in FAQ.items()}
+
+
+def find_similar_faq_key(msg):
+    keys = list(FAQ_NORMALIZED.keys())
+    matches = get_close_matches(msg, keys, n=1, cutoff=0.7)
+    return matches[0] if matches else None
 
 
 def to_int(value, default=0):
@@ -51,7 +60,19 @@ def safe_str(value):
     return str(value or "").strip()
 
 
-with open("data.csv", newline="", encoding="utf-8-sig") as f:
+def is_valid_uri(uri):
+    uri = safe_str(uri)
+    return uri.startswith("https://") or uri.startswith("http://")
+
+
+def chunk_list(items, size):
+    return [items[i:i + size] for i in range(0, len(items), size)]
+
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CSV_PATH = os.path.join(BASE_DIR, "data.csv")
+
+with open(CSV_PATH, newline="", encoding="utf-8-sig") as f:
     reader = csv.DictReader(f)
     for row in reader:
         if safe_str(row.get("사용여부", "")).upper() == "Y":
@@ -64,6 +85,8 @@ with open("data.csv", newline="", encoding="utf-8-sig") as f:
                 "이미지링크": safe_str(row.get("이미지링크", ""))
             }
             data.append(cleaned)
+
+print("DATA COUNT:", len(data))
 
 
 def get_token(force_refresh=False):
@@ -121,7 +144,6 @@ def send_request(user_id, body):
     token = get_token()
 
     url = f"https://www.worksapis.com/v1.0/bots/{BOT_ID}/users/{user_id}/messages"
-
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
@@ -131,6 +153,7 @@ def send_request(user_id, body):
 
     print("SEND STATUS:", r.status_code)
     print("SEND RESPONSE:", r.text)
+    print("SEND BODY:", body)
 
     if r.status_code == 401:
         token = get_token(force_refresh=True)
@@ -139,6 +162,7 @@ def send_request(user_id, body):
 
         print("RETRY SEND STATUS:", r.status_code)
         print("RETRY SEND RESPONSE:", r.text)
+        print("RETRY SEND BODY:", body)
 
     r.raise_for_status()
 
@@ -175,78 +199,79 @@ def get_rows_by_category(category):
     return rows
 
 
-def chunk_list(items, size):
-    return [items[i:i + size] for i in range(0, len(items), size)]
-
-
 def make_item_row(row):
-    spec_code = row["스펙코드"][:30] if row["스펙코드"] else "-"
-    desc = row["간단설명"][:70] if row["간단설명"] else "설명 없음"
-    pdf_link = row["PDF링크"]
+    spec_code = safe_str(row.get("스펙코드", ""))[:40] or "-"
+    desc = safe_str(row.get("간단설명", ""))[:80] or "설명 없음"
+    pdf_link = safe_str(row.get("PDF링크", ""))
 
-    row_contents = [
-        {
-            "type": "box",
-            "layout": "vertical",
-            "spacing": "xs",
-            "flex": 7,
-            "contents": [
-                {
-                    "type": "text",
-                    "text": spec_code,
-                    "weight": "bold",
-                    "size": "sm",
-                    "wrap": True
-                },
-                {
-                    "type": "text",
-                    "text": desc,
-                    "size": "xs",
-                    "color": "#666666",
-                    "wrap": True
-                }
-            ]
-        }
-    ]
+    left_box = {
+        "type": "box",
+        "layout": "vertical",
+        "flex": 7,
+        "spacing": "xs",
+        "contents": [
+            {
+                "type": "text",
+                "text": spec_code,
+                "weight": "bold",
+                "size": "sm",
+                "wrap": True
+            },
+            {
+                "type": "text",
+                "text": desc,
+                "size": "xs",
+                "color": "#666666",
+                "wrap": True
+            }
+        ]
+    }
 
-    if pdf_link:
-        row_contents.append({
+    if is_valid_uri(pdf_link):
+        right_component = {
             "type": "button",
-            "style": "primary",
-            "height": "sm",
-            "color": "#1F64FF",
             "flex": 3,
+            "style": "primary",
             "action": {
                 "type": "uri",
                 "label": "도면 보기",
                 "uri": pdf_link
             }
-        })
+        }
     else:
-        row_contents.append({
-            "type": "text",
-            "text": "링크 없음",
-            "size": "xs",
-            "color": "#999999",
-            "align": "end",
-            "flex": 3
-        })
+        right_component = {
+            "type": "box",
+            "layout": "vertical",
+            "flex": 3,
+            "contents": [
+                {
+                    "type": "text",
+                    "text": "링크 없음",
+                    "size": "xs",
+                    "color": "#999999",
+                    "align": "center",
+                    "wrap": True
+                }
+            ]
+        }
 
     return {
         "type": "box",
         "layout": "vertical",
-        "spacing": "sm",
         "margin": "md",
+        "spacing": "sm",
         "contents": [
             {
                 "type": "box",
                 "layout": "horizontal",
                 "spacing": "md",
-                "contents": row_contents
+                "contents": [
+                    left_box,
+                    right_component
+                ]
             },
             {
-                "type": "separator",
-                "margin": "md"
+                "type": "separator"
             }
         ]
     }
@@ -256,14 +281,14 @@ def make_page_bubble(category, page_rows, page_no, total_pages, total_count):
     body_contents = [
         {
             "type": "text",
-            "text": f"{category} 목록",
+            "text": f"{category} 스펙 목록",
             "weight": "bold",
             "size": "lg",
             "wrap": True
         },
         {
             "type": "text",
-            "text": f"{page_no} / {total_pages} 페이지   총 {total_count}건",
+            "text": f"{page_no}/{total_pages} 페이지  총 {total_count}건",
             "size": "xs",
             "color": "#666666",
             "margin": "sm"
@@ -275,80 +300,137 @@ def make_page_bubble(category, page_rows, page_no, total_pages, total_count):
 
     return {
         "type": "bubble",
-        "size": "mega",
         "body": {
             "type": "box",
             "layout": "vertical",
             "spacing": "sm",
-            "paddingAll": "16px",
             "contents": body_contents
         }
     }
 
 
-def send_flex_pages(user_id, category, all_rows):
-    if not all_rows:
-        send_text_message(user_id, f"{category} 목록이 없습니다.")
-        return
-
-    page_chunks = chunk_list(all_rows, ROWS_PER_PAGE)
+def send_flex_message_groups(user_id, category, valid_rows):
+    page_chunks = chunk_list(valid_rows, ROWS_PER_PAGE)
     total_pages = len(page_chunks)
-    total_count = len(all_rows)
+    total_count = len(valid_rows)
 
-    # 한 메시지 안에는 최대 10페이지까지만 가능
-    # 11페이지 이상이면 여러 메시지로 나눠 전송
-    carousel_groups = chunk_list(list(enumerate(page_chunks, start=1)), PAGES_PER_MESSAGE)
-
-    for group in carousel_groups:
-        bubbles = []
-
-        for page_no, page_rows in group:
-            bubble = make_page_bubble(
+    bubble_pages = []
+    for idx, page_rows in enumerate(page_chunks, start=1):
+        bubble_pages.append(
+            make_page_bubble(
                 category=category,
                 page_rows=page_rows,
-                page_no=page_no,
+                page_no=idx,
                 total_pages=total_pages,
                 total_count=total_count
             )
-            bubbles.append(bubble)
+        )
 
+    bubble_groups = chunk_list(bubble_pages, MAX_BUBBLES_PER_MESSAGE)
+
+    for group_index, bubble_group in enumerate(bubble_groups, start=1):
         body = {
             "content": {
                 "type": "flex",
-                "altText": f"{category} 스펙 목록",
+                "altText": f"{category} 스펙 목록 {group_index}",
                 "contents": {
                     "type": "carousel",
-                    "contents": bubbles
+                    "contents": bubble_group
                 }
             }
         }
-
         send_request(user_id, body)
+
+
+def send_flex_spec_pages(user_id, category):
+    rows = get_rows_by_category(category)
+
+    if not rows:
+        send_text_message(user_id, f"{category} 목록이 없습니다.")
+        return
+
+    valid_rows = []
+    invalid_rows = []
+
+    for row in rows:
+        spec_code = safe_str(row.get("스펙코드", ""))
+        pdf_link = safe_str(row.get("PDF링크", ""))
+
+        if spec_code and is_valid_uri(pdf_link):
+            valid_rows.append(row)
+        else:
+            invalid_rows.append({
+                "스펙코드": spec_code,
+                "PDF링크": pdf_link
+            })
+
+    print("CATEGORY:", category)
+    print("ROW COUNT:", len(rows))
+    print("VALID ROW COUNT:", len(valid_rows))
+    print("INVALID ROWS:", invalid_rows)
+
+    if not valid_rows:
+        send_text_message(user_id, f"{category} 유효한 데이터가 없습니다.")
+        return
+
+    send_flex_message_groups(user_id, category, valid_rows)
 
 
 def handle_message(user_id, raw_msg):
     raw_msg = safe_str(raw_msg)
-    msg = raw_msg.upper()
+    msg_normalized = normalize_text(raw_msg)
+    msg_upper = raw_msg.upper()
 
-    if msg in FAQ_UPPER:
-        send_text_message(user_id, FAQ_UPPER[msg])
+    print("RAW MSG:", raw_msg)
+    print("NORMALIZED MSG:", msg_normalized)
+    print("UPPER MSG:", msg_upper)
+
+    if msg_normalized in FAQ_NORMALIZED:
+        send_text_message(user_id, FAQ_NORMALIZED[msg_normalized])
         return
 
-    if msg in ["스펙", "SPEC"]:
+    similar_key = find_similar_faq_key(msg_normalized)
+    if similar_key:
+        send_text_message(user_id, FAQ_NORMALIZED[similar_key])
+        return
+
+    if msg_normalized in ["스펙", "스팩", "SPEC"]:
         send_category_menu(user_id)
         return
 
-    if msg.startswith("CAT|"):
-        category = msg.split("|", 1)[1].strip().upper()
+    if msg_upper.startswith("CAT|"):
+        category = msg_upper.split("|", 1)[1].strip().upper()
         if category in CATEGORY_LIST:
-            rows = get_rows_by_category(category)
-            send_flex_pages(user_id, category, rows)
+            send_flex_spec_pages(user_id, category)
+            return
+
+    if msg_upper in CATEGORY_LIST:
+        send_flex_spec_pages(user_id, msg_upper)
         return
 
-    if msg in CATEGORY_LIST:
-        rows = get_rows_by_category(msg)
-        send_flex_pages(user_id, msg, rows)
-        return
+    send_text_message(user_id, "원하시는 기능을 찾지 못했습니다.\n스펙 또는 회사 정보를 입력해 주세요.")
+
+
+def edit_uptimerobot_monitor(status_value):
+    api_key = os.environ["UPTIMEROBOT_API_KEY"]
+    monitor_id = os.environ["UPTIMEROBOT_MONITOR_ID"]
+
+    url = "https://api.uptimerobot.com/v2/editMonitor"
+    data = {
+        "api_key": api_key,
+        "id": monitor_id,
+        "status": status_value
+    }
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+
+    r = requests.post(url, data=data, headers=headers, timeout=10)
+    print("UPTIMEROBOT STATUS:", r.status_code)
+    print("UPTIMEROBOT RESPONSE:", r.text)
+    r.raise_for_status()
+
+    return r.text
 
 
 @app.route("/health", methods=["GET"])
@@ -357,29 +439,51 @@ def health():
 
 
 @app.route("/pause", methods=["GET"])
-def pause():
-    return "pause endpoint ready", 200
+def pause_monitor():
+    edit_uptimerobot_monitor(0)
+    return "paused", 200
 
 
 @app.route("/resume", methods=["GET"])
-def resume():
-    return "resume endpoint ready", 200
+def resume_monitor():
+    edit_uptimerobot_monitor(1)
+    return "resumed", 200
+
+
+@app.route("/", methods=["GET"])
+def home():
+    return "ok", 200
 
 
 @app.route("/", methods=["POST"])
 def bot():
-    req = request.get_json(force=True)
+    req = request.get_json(force=True, silent=True) or {}
     print("CALLBACK JSON:", req)
 
-    user_id = req["source"]["userId"]
-    raw_msg = safe_str(req["content"]["text"])
-
     try:
+        source = req.get("source", {}) or {}
+        content = req.get("content", {}) or {}
+        user_id = safe_str(source.get("userId", ""))
+
+        if not user_id:
+            print("NO USER ID")
+            return "ok", 200
+
+        raw_msg = safe_str(content.get("text", ""))
+
+        if not raw_msg:
+            print("NO TEXT MESSAGE")
+            return "ok", 200
+
         handle_message(user_id, raw_msg)
+
     except Exception as e:
         print("HANDLE ERROR:", str(e))
         try:
-            send_text_message(user_id, "처리 중 오류가 발생했습니다.")
+            source = req.get("source", {}) or {}
+            user_id = safe_str(source.get("userId", ""))
+            if user_id:
+                send_text_message(user_id, "처리 중 오류가 발생했습니다.")
         except Exception as send_err:
             print("ERROR NOTICE FAILED:", str(send_err))
 
