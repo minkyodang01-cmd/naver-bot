@@ -30,12 +30,6 @@ def normalize_text(text):
     return str(text or "").strip().upper().replace(" ", "")
 
 
-def find_similar_faq_key(msg):
-    keys = list(FAQ_NORMALIZED.keys())
-    matches = get_close_matches(msg, keys, n=1, cutoff=0.7)
-    return matches[0] if matches else None
-
-
 def to_int(value, default=0):
     try:
         return int(str(value).strip())
@@ -58,11 +52,8 @@ def chunk_list(items, size):
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# =========================
-# ◇ DATA CSV 로드
-# =========================
+# DATA CSV 로드
 CSV_PATH = os.path.join(BASE_DIR, "data.csv")
-
 with open(CSV_PATH, newline="", encoding="utf-8-sig") as f:
     reader = csv.DictReader(f)
     for row in reader:
@@ -77,11 +68,8 @@ with open(CSV_PATH, newline="", encoding="utf-8-sig") as f:
             }
             data.append(cleaned)
 
-# =========================
-# ◇ FAQ CSV 로드
-# =========================
+# FAQ CSV 로드
 FAQ_PATH = os.path.join(BASE_DIR, "faq.csv")
-
 with open(FAQ_PATH, newline="", encoding="utf-8-sig") as f:
     reader = csv.DictReader(f)
     for row in reader:
@@ -92,6 +80,12 @@ with open(FAQ_PATH, newline="", encoding="utf-8-sig") as f:
                 FAQ[q] = a
 
 FAQ_NORMALIZED = {normalize_text(k): v for k, v in FAQ.items()}
+
+
+def find_similar_faq_key(msg):
+    keys = list(FAQ_NORMALIZED.keys())
+    matches = get_close_matches(msg, keys, n=1, cutoff=0.7)
+    return matches[0] if matches else None
 
 
 def get_token(force_refresh=False):
@@ -123,7 +117,9 @@ def get_token(force_refresh=False):
             "scope": "bot.message"
         }
 
-        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
 
         r = session.post(url, data=token_data, headers=headers, timeout=10)
         r.raise_for_status()
@@ -189,17 +185,31 @@ def get_rows_by_category(category):
 
 
 def make_item_row(row):
-    spec_code = safe_str(row.get("스펙코드", ""))[:26] or "-"
-    desc = safe_str(row.get("간단설명", ""))[:38] or "설명 없음"
+    spec_code = safe_str(row.get("스펙코드", ""))[:32] or "-"
+    desc = safe_str(row.get("간단설명", ""))[:44] or "설명 없음"
     pdf_link = safe_str(row.get("PDF링크", ""))
 
     left_box = {
         "type": "box",
         "layout": "vertical",
         "flex": 9,
+        "spacing": "xs",
         "contents": [
-            {"type": "text", "text": spec_code, "weight": "bold", "size": "md"},
-            {"type": "text", "text": desc, "size": "sm"}
+            {
+                "type": "text",
+                "text": spec_code,
+                "weight": "bold",
+                "size": "md",
+                "color": "#222222",
+                "wrap": True
+            },
+            {
+                "type": "text",
+                "text": desc,
+                "size": "sm",
+                "color": "#666666",
+                "wrap": True
+            }
         ]
     }
 
@@ -210,9 +220,25 @@ def make_item_row(row):
             "flex": 1,
             "backgroundColor": "#8F8F8F",
             "cornerRadius": "6px",
-            "paddingAll": "4px",
-            "action": {"type": "uri", "uri": pdf_link},
-            "contents": [{"type": "text", "text": "▼", "size": "xs", "align": "center", "color": "#FFFFFF"}]
+            "paddingTop": "3px",
+            "paddingBottom": "3px",
+            "paddingStart": "4px",
+            "paddingEnd": "4px",
+            "action": {
+                "type": "uri",
+                "label": "download",
+                "uri": pdf_link
+            },
+            "contents": [
+                {
+                    "type": "text",
+                    "text": "▼",
+                    "size": "xs",
+                    "weight": "bold",
+                    "color": "#FFFFFF",
+                    "align": "center"
+                }
+            ]
         }
     else:
         right_component = {
@@ -221,15 +247,108 @@ def make_item_row(row):
             "flex": 1,
             "backgroundColor": "#C8C8C8",
             "cornerRadius": "6px",
-            "paddingAll": "4px",
-            "contents": [{"type": "text", "text": "-", "size": "xs", "align": "center"}]
+            "paddingTop": "3px",
+            "paddingBottom": "3px",
+            "paddingStart": "4px",
+            "paddingEnd": "4px",
+            "contents": [
+                {
+                    "type": "text",
+                    "text": "-",
+                    "size": "xs",
+                    "color": "#FFFFFF",
+                    "align": "center"
+                }
+            ]
         }
 
     return {
         "type": "box",
-        "layout": "horizontal",
-        "contents": [left_box, right_component]
+        "layout": "vertical",
+        "margin": "sm",
+        "spacing": "sm",
+        "contents": [
+            {
+                "type": "box",
+                "layout": "horizontal",
+                "spacing": "sm",
+                "contents": [
+                    left_box,
+                    right_component
+                ]
+            },
+            {
+                "type": "separator",
+                "color": "#B8B8B8"
+            }
+        ]
     }
+
+
+def make_page_bubble(category, page_rows, page_no, total_pages, total_count):
+    body_contents = [
+        {
+            "type": "text",
+            "text": f"{category} 스펙 목록",
+            "weight": "bold",
+            "size": "lg",
+            "color": "#333333",
+            "wrap": True
+        },
+        {
+            "type": "text",
+            "text": f"{page_no}/{total_pages} 페이지  총 {total_count}건",
+            "size": "xs",
+            "color": "#666666",
+            "margin": "md"
+        }
+    ]
+
+    for row in page_rows:
+        body_contents.append(make_item_row(row))
+
+    return {
+        "type": "bubble",
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": body_contents
+        }
+    }
+
+
+def send_flex_message_groups(user_id, category, valid_rows):
+    page_chunks = chunk_list(valid_rows, ROWS_PER_PAGE)
+    total_pages = len(page_chunks)
+    total_count = len(valid_rows)
+
+    bubble_pages = []
+    for idx, page_rows in enumerate(page_chunks, start=1):
+        bubble_pages.append(
+            make_page_bubble(
+                category=category,
+                page_rows=page_rows,
+                page_no=idx,
+                total_pages=total_pages,
+                total_count=total_count
+            )
+        )
+
+    bubble_groups = chunk_list(bubble_pages, MAX_BUBBLES_PER_MESSAGE)
+
+    for group_index, bubble_group in enumerate(bubble_groups, start=1):
+        body = {
+            "content": {
+                "type": "flex",
+                "altText": f"{category} 스펙 목록 {group_index}",
+                "contents": {
+                    "type": "carousel",
+                    "contents": bubble_group
+                }
+            }
+        }
+        send_request(user_id, body)
 
 
 def send_flex_spec_pages(user_id, category):
@@ -239,57 +358,75 @@ def send_flex_spec_pages(user_id, category):
         send_text_message(user_id, f"{category} 목록이 없습니다.")
         return
 
-    contents = [make_item_row(r) for r in rows[:10]]
+    valid_rows = []
+    invalid_rows = []
 
-    body = {
-        "content": {
-            "type": "flex",
-            "altText": f"{category} 목록",
-            "contents": {
-                "type": "bubble",
-                "body": {
-                    "type": "box",
-                    "layout": "vertical",
-                    "contents": contents
-                }
-            }
-        }
-    }
+    for row in rows:
+        spec_code = safe_str(row.get("스펙코드", ""))
+        pdf_link = safe_str(row.get("PDF링크", ""))
 
-    send_request(user_id, body)
+        if spec_code and is_valid_uri(pdf_link):
+            valid_rows.append(row)
+        else:
+            invalid_rows.append({
+                "스펙코드": spec_code,
+                "PDF링크": pdf_link
+            })
+
+    print("CATEGORY:", category)
+    print("ROW COUNT:", len(rows))
+    print("VALID ROW COUNT:", len(valid_rows))
+    print("INVALID ROWS:", invalid_rows)
+
+    if not valid_rows:
+        send_text_message(user_id, f"{category} 유효한 데이터가 없습니다.")
+        return
+
+    send_flex_message_groups(user_id, category, valid_rows)
 
 
 def handle_message(user_id, raw_msg):
     raw_msg = safe_str(raw_msg)
-    msg = normalize_text(raw_msg)
+    msg_normalized = normalize_text(raw_msg)
+    msg_upper = raw_msg.upper()
 
-    if msg in FAQ_NORMALIZED:
-        send_text_message(user_id, FAQ_NORMALIZED[msg])
+    if msg_normalized in FAQ_NORMALIZED:
+        send_text_message(user_id, FAQ_NORMALIZED[msg_normalized])
         return
 
-    similar_key = find_similar_faq_key(msg)
+    similar_key = find_similar_faq_key(msg_normalized)
     if similar_key:
         send_text_message(user_id, FAQ_NORMALIZED[similar_key])
         return
 
-    if msg in ["스펙", "SPEC"]:
+    if msg_normalized in ["스펙", "스팩", "SPEC"]:
         send_category_menu(user_id)
         return
 
-    if raw_msg.upper().startswith("CAT|"):
-        category = raw_msg.split("|")[1].upper()
+    if msg_upper.startswith("CAT|"):
+        category = msg_upper.split("|", 1)[1].strip().upper()
         if category in CATEGORY_LIST:
             send_flex_spec_pages(user_id, category)
             return
+
+    if msg_upper in CATEGORY_LIST:
+        send_flex_spec_pages(user_id, msg_upper)
+        return
 
     send_text_message(user_id, "원하시는 기능을 찾지 못했습니다.")
 
 
 @app.route("/", methods=["POST"])
 def bot():
-    req = request.get_json(force=True)
-    user_id = req["source"]["userId"]
-    text = req["content"]["text"]
+    req = request.get_json(force=True, silent=True) or {}
+    source = req.get("source", {}) or {}
+    content = req.get("content", {}) or {}
+
+    user_id = safe_str(source.get("userId", ""))
+    text = safe_str(content.get("text", ""))
+
+    if not user_id or not text:
+        return "ok", 200
 
     handle_message(user_id, text)
     return "ok", 200
