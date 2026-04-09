@@ -200,14 +200,14 @@ def get_rows_by_category(category):
 
 
 def make_item_row(row):
-    spec_code = safe_str(row.get("스펙코드", ""))[:40] or "-"
-    desc = safe_str(row.get("간단설명", ""))[:80] or "설명 없음"
+    spec_code = safe_str(row.get("스펙코드", ""))[:30] or "-"
+    desc = safe_str(row.get("간단설명", ""))[:55] or "설명 없음"
     pdf_link = safe_str(row.get("PDF링크", ""))
 
     left_box = {
         "type": "box",
         "layout": "vertical",
-        "flex": 9,
+        "flex": 7,
         "spacing": "xs",
         "contents": [
             {
@@ -231,10 +231,10 @@ def make_item_row(row):
     if is_valid_uri(pdf_link):
         right_component = {
             "type": "button",
-            "flex": 2,
+            "flex": 3,
             "height": "sm",
             "style": "primary",
-            "color": "#8B7CFF",
+            "color": "#9B8CFF",
             "action": {
                 "type": "uri",
                 "label": "보기",
@@ -245,7 +245,7 @@ def make_item_row(row):
         right_component = {
             "type": "box",
             "layout": "vertical",
-            "flex": 2,
+            "flex": 3,
             "contents": [
                 {
                     "type": "text",
@@ -261,13 +261,14 @@ def make_item_row(row):
     return {
         "type": "box",
         "layout": "vertical",
-        "margin": "sm",
-        "spacing": "xs",
+        "margin": "md",
+        "spacing": "sm",
         "contents": [
             {
                 "type": "box",
                 "layout": "horizontal",
                 "spacing": "md",
+                "margin": "sm",
                 "contents": [
                     left_box,
                     right_component
