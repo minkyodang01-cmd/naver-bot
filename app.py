@@ -181,7 +181,7 @@ def send_category_menu(user_id):
     body = {
         "content": {
             "type": "button_template",
-            "contentText": "스펙 구분을 선택하세요.",
+            "contentText": "스펙구분을 선택하세요.",
             "actions": [
                 {"type": "message", "label": "HKMC", "text": "CAT|HKMC"},
                 {"type": "message", "label": "GM", "text": "CAT|GM"},
@@ -432,7 +432,7 @@ def handle_message(user_id, raw_msg):
         send_flex_spec_pages(user_id, msg_upper)
         return
 
-    send_text_message(user_id, "원하시는 기능을 찾지 못했습니다.\n스펙 또는 회사 정보를 입력해 주세요.")
+    send_text_message(user_id, "원하시는 기능을 찾지 못했습니다.\n  (EX. 스펙, 전화번호, 주소, SSA, 열수축튜브 등) .")
 
 
 @app.route("/health", methods=["GET", "HEAD"])
