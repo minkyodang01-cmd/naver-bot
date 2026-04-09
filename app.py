@@ -11,15 +11,13 @@ app = Flask(__name__)
 
 BOT_ID = os.environ["BOT_ID"]
 
-# ✅ UL 추가 완료
 CATEGORY_LIST = ["HKMC", "GM", "RENAULT", "APTIV", "UL"]
-
-
 
 ROWS_PER_PAGE = 10
 MAX_BUBBLES_PER_MESSAGE = 10
 
 data = []
+FAQ = {}
 
 token_lock = Lock()
 cached_token = None
@@ -30,9 +28,6 @@ session = requests.Session()
 
 def normalize_text(text):
     return str(text or "").strip().upper().replace(" ", "")
-
-
-FAQ_NORMALIZED = {normalize_text(k): v for k, v in FAQ.items()}
 
 
 def find_similar_faq_key(msg):
@@ -62,6 +57,10 @@ def chunk_list(items, size):
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# =========================
+# ◇ DATA CSV 로드
+# =========================
 CSV_PATH = os.path.join(BASE_DIR, "data.csv")
 
 with open(CSV_PATH, newline="", encoding="utf-8-sig") as f:
@@ -78,7 +77,21 @@ with open(CSV_PATH, newline="", encoding="utf-8-sig") as f:
             }
             data.append(cleaned)
 
-print("DATA COUNT:", len(data))
+# =========================
+# ◇ FAQ CSV 로드
+# =========================
+FAQ_PATH = os.path.join(BASE_DIR, "faq.csv")
+
+with open(FAQ_PATH, newline="", encoding="utf-8-sig") as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        if safe_str(row.get("사용여부", "")).upper() == "Y":
+            q = safe_str(row.get("질문", ""))
+            a = safe_str(row.get("답변", ""))
+            if q and a:
+                FAQ[q] = a
+
+FAQ_NORMALIZED = {normalize_text(k): v for k, v in FAQ.items()}
 
 
 def get_token(force_refresh=False):
@@ -110,15 +123,12 @@ def get_token(force_refresh=False):
             "scope": "bot.message"
         }
 
-        headers = {
-            "Content-Type": "application/x-www-form-urlencoded"
-        }
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
         r = session.post(url, data=token_data, headers=headers, timeout=10)
-
         r.raise_for_status()
-        token_json = r.json()
 
+        token_json = r.json()
         cached_token = token_json["access_token"]
         expires_in = to_int(token_json.get("expires_in", 3600), 3600)
         cached_token_expire_at = now + max(60, expires_in - 120)
@@ -155,7 +165,6 @@ def send_text_message(user_id, text):
     send_request(user_id, body)
 
 
-# ✅ 버튼 UL 추가 + 콤마 오류 수정 완료
 def send_category_menu(user_id):
     body = {
         "content": {
@@ -188,10 +197,9 @@ def make_item_row(row):
         "type": "box",
         "layout": "vertical",
         "flex": 9,
-        "spacing": "xs",
         "contents": [
-            {"type": "text", "text": spec_code, "weight": "bold", "size": "md", "wrap": True},
-            {"type": "text", "text": desc, "size": "sm", "wrap": True}
+            {"type": "text", "text": spec_code, "weight": "bold", "size": "md"},
+            {"type": "text", "text": desc, "size": "sm"}
         ]
     }
 
@@ -252,7 +260,17 @@ def send_flex_spec_pages(user_id, category):
 
 
 def handle_message(user_id, raw_msg):
+    raw_msg = safe_str(raw_msg)
     msg = normalize_text(raw_msg)
+
+    if msg in FAQ_NORMALIZED:
+        send_text_message(user_id, FAQ_NORMALIZED[msg])
+        return
+
+    similar_key = find_similar_faq_key(msg)
+    if similar_key:
+        send_text_message(user_id, FAQ_NORMALIZED[similar_key])
+        return
 
     if msg in ["스펙", "SPEC"]:
         send_category_menu(user_id)
@@ -264,7 +282,7 @@ def handle_message(user_id, raw_msg):
             send_flex_spec_pages(user_id, category)
             return
 
-    send_text_message(user_id, "명령을 이해하지 못했습니다.")
+    send_text_message(user_id, "원하시는 기능을 찾지 못했습니다.")
 
 
 @app.route("/", methods=["POST"])
