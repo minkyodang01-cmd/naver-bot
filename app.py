@@ -207,7 +207,7 @@ def make_item_row(row):
     left_box = {
         "type": "box",
         "layout": "vertical",
-        "flex": 8,
+        "flex": 9,
         "spacing": "xs",
         "contents": [
             {
@@ -215,6 +215,7 @@ def make_item_row(row):
                 "text": spec_code,
                 "weight": "bold",
                 "size": "sm",
+                "color": "#222222",
                 "wrap": True
             },
             {
@@ -233,7 +234,7 @@ def make_item_row(row):
             "flex": 2,
             "height": "sm",
             "style": "primary",
-            "color": "#7B61FF",
+            "color": "#8B7CFF",
             "action": {
                 "type": "uri",
                 "label": "보기",
@@ -260,8 +261,8 @@ def make_item_row(row):
     return {
         "type": "box",
         "layout": "vertical",
-        "margin": "md",
-        "spacing": "sm",
+        "margin": "sm",
+        "spacing": "xs",
         "contents": [
             {
                 "type": "box",
@@ -273,7 +274,8 @@ def make_item_row(row):
                 ]
             },
             {
-                "type": "separator"
+                "type": "separator",
+                "color": "#B8B8B8"
             }
         ]
     }
@@ -286,6 +288,7 @@ def make_page_bubble(category, page_rows, page_no, total_pages, total_count):
             "text": f"{category} 스펙 목록",
             "weight": "bold",
             "size": "lg",
+            "color": "#333333",
             "wrap": True
         },
         {
@@ -293,7 +296,7 @@ def make_page_bubble(category, page_rows, page_no, total_pages, total_count):
             "text": f"{page_no}/{total_pages} 페이지  총 {total_count}건",
             "size": "xs",
             "color": "#666666",
-            "margin": "sm"
+            "margin": "md"
         }
     ]
 
