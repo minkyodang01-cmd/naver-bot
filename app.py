@@ -440,38 +440,60 @@ def edit_uptimerobot_monitor(status_value):
     monitor_id = os.environ["UPTIMEROBOT_MONITOR_ID"]
 
     url = "https://api.uptimerobot.com/v2/editMonitor"
+
     data = {
         "api_key": api_key,
+        "format": "json",
         "id": monitor_id,
         "status": status_value
     }
+
     headers = {
-        "Content-Type": "application/x-www-form-urlencoded"
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Cache-Control": "no-cache"
     }
 
     r = requests.post(url, data=data, headers=headers, timeout=10)
+
     print("UPTIMEROBOT STATUS:", r.status_code)
-    print("UPTIMEROBOT RESPONSE:", r.text)
+    print("UPTIMEROBOT RAW RESPONSE:", r.text)
+
     r.raise_for_status()
 
-    return r.text
+    try:
+        result = r.json()
+    except Exception:
+        raise Exception(f"UptimeRobot 응답 JSON 파싱 실패: {r.text}")
+
+    print("UPTIMEROBOT JSON:", result)
+
+    if result.get("stat") != "ok":
+        raise Exception(f"UptimeRobot 상태변경 실패: {result}")
+
+    return result
 
 
-@app.route("/health", methods=["GET"])
+@app.route("/health", methods=["GET", "HEAD"])
 def health():
     return "ok", 200
 
 
 @app.route("/pause", methods=["GET"])
 def pause_monitor():
-    edit_uptimerobot_monitor(0)
-    return "paused", 200
+    result = edit_uptimerobot_monitor(0)
+    return {
+        "status": "paused",
+        "uptimerobot": result
+    }, 200
 
 
 @app.route("/resume", methods=["GET"])
 def resume_monitor():
-    edit_uptimerobot_monitor(1)
-    return "resumed", 200
+    result = edit_uptimerobot_monitor(1)
+    return {
+        "status": "resumed",
+        "uptimerobot": result
+    }, 200
 
 
 @app.route("/", methods=["GET"])
