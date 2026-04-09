@@ -435,65 +435,9 @@ def handle_message(user_id, raw_msg):
     send_text_message(user_id, "원하시는 기능을 찾지 못했습니다.\n스펙 또는 회사 정보를 입력해 주세요.")
 
 
-def edit_uptimerobot_monitor(status_value):
-    api_key = os.environ["UPTIMEROBOT_API_KEY"]
-    monitor_id = os.environ["UPTIMEROBOT_MONITOR_ID"]
-
-    url = "https://api.uptimerobot.com/v2/editMonitor"
-
-    data = {
-        "api_key": api_key,
-        "format": "json",
-        "id": monitor_id,
-        "status": status_value
-    }
-
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Cache-Control": "no-cache"
-    }
-
-    r = requests.post(url, data=data, headers=headers, timeout=10)
-
-    print("UPTIMEROBOT STATUS:", r.status_code)
-    print("UPTIMEROBOT RAW RESPONSE:", r.text)
-
-    r.raise_for_status()
-
-    try:
-        result = r.json()
-    except Exception:
-        raise Exception(f"UptimeRobot 응답 JSON 파싱 실패: {r.text}")
-
-    print("UPTIMEROBOT JSON:", result)
-
-    if result.get("stat") != "ok":
-        raise Exception(f"UptimeRobot 상태변경 실패: {result}")
-
-    return result
-
-
 @app.route("/health", methods=["GET", "HEAD"])
 def health():
     return "ok", 200
-
-
-@app.route("/pause", methods=["GET"])
-def pause_monitor():
-    result = edit_uptimerobot_monitor(0)
-    return {
-        "status": "paused",
-        "uptimerobot": result
-    }, 200
-
-
-@app.route("/resume", methods=["GET"])
-def resume_monitor():
-    result = edit_uptimerobot_monitor(1)
-    return {
-        "status": "resumed",
-        "uptimerobot": result
-    }, 200
 
 
 @app.route("/", methods=["GET"])
