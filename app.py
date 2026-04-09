@@ -187,6 +187,7 @@ def send_category_menu(user_id):
                 {"type": "message", "label": "GM", "text": "CAT|GM"},
                 {"type": "message", "label": "RENAULT", "text": "CAT|RENAULT"},
                 {"type": "message", "label": "APTIV", "text": "CAT|APTIV"}
+                {"type": "message", "label": "UL", "text": "CAT|UL"}
             ]
         }
     }
