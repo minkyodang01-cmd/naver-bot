@@ -432,7 +432,7 @@ def handle_message(user_id, raw_msg):
         send_flex_spec_pages(user_id, msg_upper)
         return
 
-    send_text_message(user_id, "원하시는 기능을 찾지 못했습니다.\n  (EX. 스펙, 전화번호, 주소, SSA, 열수축튜브 등) .")
+    send_text_message(user_id, "원하시는 기능을 찾지 못했습니다.\n\n(입력 : 스펙, 전화번호, 주소, SSA, 열수축튜브 등) .")
 
 
 @app.route("/health", methods=["GET", "HEAD"])
