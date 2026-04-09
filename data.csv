@@ -1,4 +1,4 @@
-구분,정렬순서,스펙코드,간단설명,PDF링크,이미지링크,사용여부
+﻿구분,정렬순서,스펙코드,간단설명,PDF링크,이미지링크,사용여부
 HKMC,1,ES91409-00 ,열 수축 튜브,https://works.do/5JJWWt1,,Y
 HKMC,2,ES9104-50 ,RL 튜브,TEST,,Y
 HKMC,3,ES91406-00 ,BES 튜브,TEST,,Y
@@ -28,5 +28,3 @@ APTIV,4,M2038,일반수축튜브 (Single wall),TEST,,Y
 UL,1,UL224,압출 절연 튜브,TEST,,Y
 UL,2,UL94,플라스틱 난연시험,TEST,,Y
 UL,3,UL난연시험 설명,UL 규격별 난연시험,TEST,,Y
-
-
