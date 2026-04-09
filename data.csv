@@ -1,17 +1,32 @@
 구분,정렬순서,스펙코드,간단설명,PDF링크,이미지링크,사용여부
-HKMC,1,ES91409-00 ,열수축 일반 방수용 접착 튜브,https://works.do/5JJWWt1,,Y
-HKMC,1,ES91409-01 ,열수축 일반 방수용 접착 튜브,https://works.do/5JJWWt1,,Y
-HKMC,1,ES91409-02 ,열수축 일반 방수용 접착 튜브,https://works.do/5JJWWt1,,Y
-HKMC,1,ES91409-03 ,열수축 일반 방수용 접착 튜브,https://works.do/5JJWWt1,,Y
-HKMC,1,ES91409-04 ,열수축 일반 방수용 접착 튜브,https://works.do/5JJWWt1,,Y
-HKMC,1,ES91409-05 ,열수축 일반 방수용 접착 튜브,https://works.do/5JJWWt1,,Y
-HKMC,1,ES91409-06 ,열수축 일반 방수용 접착 튜브,https://works.do/5JJWWt1,,Y
-HKMC,1,ES91409-07 ,열수축 일반 방수용 접착 튜브,https://works.do/5JJWWt1,,Y
-HKMC,1,ES91409-08 ,열수축 일반 방수용 접착 튜브,https://works.do/5JJWWt1,,Y
-HKMC,1,ES91409-09 ,열수축 일반 방수용 접착 튜브,https://works.do/5JJWWt1,,Y
-HKMC,1,ES91409-10 ,열수축 일반 방수용 접착 튜브,https://works.do/5JJWWt1,,Y
-HKMC,1,ES91409-11 ,열수축 일반 방수용 접착 튜브,https://works.do/5JJWWt1,,Y
-HKMC,1,ES91409-12 ,열수축 일반 방수용 접착 튜브,https://works.do/5JJWWt1,,Y
-HKMC,1,ES91409-13 ,열수축 일반 방수용 접착 튜브,https://works.do/5JJWWt1,,Y
-HKMC,1,ES91409-14 ,열수축 일반 방수용 접착 튜브,https://works.do/5JJWWt1,,Y
+HKMC,1,ES91409-00 ,열 수축 튜브,https://works.do/5JJWWt1,,Y
+HKMC,2,ES9104-50 ,RL 튜브,TEST,,Y
+HKMC,3,ES91406-00 ,BES 튜브,TEST,,Y
+HKMC,4,ES91404-10,SPT 튜브 (경질),TEST,,Y
+HKMC,5,ES91410-00,내열 튜브,TEST,,Y
+HKMC,6,ES91404-20,Crush Shield (RD),TEST,,Y
+HKMC,7,ES91110-05 ,전선통합규격,TEST,,Y
+HKMC,8,MS 231-18,BPA 튜브,TEST,,Y
+HKMC,9,MS 300-08,연소성 TEST,TEST,,Y
+HKMC,10,MS 300-55,VOCs TEST,TEST,,Y
+HKMC,11,MS 300-34,냄새TEST,TEST,,Y
+HKMC,12,MS 201-02,유해물질,TEST,,Y
+HKMC,13,MS 941-06,버스바 피복재료,TEST,,Y
+GM,1,GMW14327,Textile Sleeves,TEST,,Y
+GM,2,GMW17136,Heat Shrinke tube,TEST,,Y
+GM,3,GMW17402,Smooth tube ,TEST,,Y
+GM,4,GMW15608,Thermal Resistant Sleeving ,TEST,,Y
+GM,5,GMW16740,Harness Tape,TEST,,Y
+GM,6,GMW14700,Chip Resistance,TEST,,Y
+RENAULT,1,GDN-3605-1899-0035,Tube protection (직물 외),TEST,,Y
+RENAULT,2,RNDS-B-00217,(구)Tube protection (직물 외),TEST,,Y
+RENAULT,3,RNDS-B-00219,Harness Heat Shrink Tubes,TEST,,Y
+APTIV,1,M0961,접착튜브 (Dual wall),TEST,,Y
+APTIV,2,M3552,접착튜브 난연(Dual wall),TEST,,Y
+APTIV,3,M3565,접착튜브 (Dual wall),TEST,,Y
+APTIV,4,M2038,일반수축튜브 (Single wall),TEST,,Y
+UL,1,UL224,압출 절연 튜브,TEST,,Y
+UL,2,UL94,플라스틱 난연시험,TEST,,Y
+UL,3,UL난연시험 설명,UL 규격별 난연시험,TEST,,Y
+
 
