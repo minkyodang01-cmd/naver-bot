@@ -10,19 +10,11 @@ from difflib import get_close_matches
 app = Flask(__name__)
 
 BOT_ID = os.environ["BOT_ID"]
+
+# ✅ UL 추가 완료
 CATEGORY_LIST = ["HKMC", "GM", "RENAULT", "APTIV", "UL"]
 
-FAQ = {
-    "주소": "서울시 ...\n한미케이블 본사",
-    "회사주소": "서울시 ...\n한미케이블 본사",
-    "본사주소": "서울시 ...\n한미케이블 본사",
-    "전화번호": "대표번호: 02-1234-5678\n팩스: 02-1111-2222",
-    "대표번호": "02-1234-5678",
-    "연락처": "02-1234-5678",
-    "팩스": "02-1111-2222",
-    "이메일": "대표: test@example.com\n기술문의: tech@example.com",
-    "홈페이지": "https://example.com"
-}
+
 
 ROWS_PER_PAGE = 10
 MAX_BUBBLES_PER_MESSAGE = 10
@@ -124,14 +116,8 @@ def get_token(force_refresh=False):
 
         r = session.post(url, data=token_data, headers=headers, timeout=10)
 
-        print("TOKEN STATUS:", r.status_code)
-        print("TOKEN RESPONSE:", r.text)
-
         r.raise_for_status()
         token_json = r.json()
-
-        if "access_token" not in token_json:
-            raise Exception(f"access_token 없음: {token_json}")
 
         cached_token = token_json["access_token"]
         expires_in = to_int(token_json.get("expires_in", 3600), 3600)
@@ -151,18 +137,10 @@ def send_request(user_id, body):
 
     r = session.post(url, headers=headers, json=body, timeout=10)
 
-    print("SEND STATUS:", r.status_code)
-    print("SEND RESPONSE:", r.text)
-    print("SEND BODY:", body)
-
     if r.status_code == 401:
         token = get_token(force_refresh=True)
         headers["Authorization"] = f"Bearer {token}"
         r = session.post(url, headers=headers, json=body, timeout=10)
-
-        print("RETRY SEND STATUS:", r.status_code)
-        print("RETRY SEND RESPONSE:", r.text)
-        print("RETRY SEND BODY:", body)
 
     r.raise_for_status()
 
@@ -177,6 +155,7 @@ def send_text_message(user_id, text):
     send_request(user_id, body)
 
 
+# ✅ 버튼 UL 추가 + 콤마 오류 수정 완료
 def send_category_menu(user_id):
     body = {
         "content": {
@@ -186,7 +165,7 @@ def send_category_menu(user_id):
                 {"type": "message", "label": "HKMC", "text": "CAT|HKMC"},
                 {"type": "message", "label": "GM", "text": "CAT|GM"},
                 {"type": "message", "label": "RENAULT", "text": "CAT|RENAULT"},
-                {"type": "message", "label": "APTIV", "text": "CAT|APTIV"}
+                {"type": "message", "label": "APTIV", "text": "CAT|APTIV"},
                 {"type": "message", "label": "UL", "text": "CAT|UL"}
             ]
         }
@@ -211,21 +190,8 @@ def make_item_row(row):
         "flex": 9,
         "spacing": "xs",
         "contents": [
-            {
-                "type": "text",
-                "text": spec_code,
-                "weight": "bold",
-                "size": "md",
-                "color": "#222222",
-                "wrap": True
-            },
-            {
-                "type": "text",
-                "text": desc,
-                "size": "sm",
-                "color": "#666666",
-                "wrap": True
-            }
+            {"type": "text", "text": spec_code, "weight": "bold", "size": "md", "wrap": True},
+            {"type": "text", "text": desc, "size": "sm", "wrap": True}
         ]
     }
 
@@ -236,25 +202,9 @@ def make_item_row(row):
             "flex": 1,
             "backgroundColor": "#8F8F8F",
             "cornerRadius": "6px",
-            "paddingTop": "3px",
-            "paddingBottom": "3px",
-            "paddingStart": "4px",
-            "paddingEnd": "4px",
-            "action": {
-                "type": "uri",
-                "label": "download",
-                "uri": pdf_link
-            },
-            "contents": [
-                {
-                    "type": "text",
-                    "text": "▼",
-                    "size": "xs",
-                    "weight": "bold",
-                    "color": "#FFFFFF",
-                    "align": "center"
-                }
-            ]
+            "paddingAll": "4px",
+            "action": {"type": "uri", "uri": pdf_link},
+            "contents": [{"type": "text", "text": "▼", "size": "xs", "align": "center", "color": "#FFFFFF"}]
         }
     else:
         right_component = {
@@ -263,108 +213,15 @@ def make_item_row(row):
             "flex": 1,
             "backgroundColor": "#C8C8C8",
             "cornerRadius": "6px",
-            "paddingTop": "3px",
-            "paddingBottom": "3px",
-            "paddingStart": "4px",
-            "paddingEnd": "4px",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": "-",
-                    "size": "xs",
-                    "color": "#FFFFFF",
-                    "align": "center"
-                }
-            ]
+            "paddingAll": "4px",
+            "contents": [{"type": "text", "text": "-", "size": "xs", "align": "center"}]
         }
 
     return {
         "type": "box",
-        "layout": "vertical",
-        "margin": "sm",
-        "spacing": "sm",
-        "contents": [
-            {
-                "type": "box",
-                "layout": "horizontal",
-                "spacing": "sm",
-                "contents": [
-                    left_box,
-                    right_component
-                ]
-            },
-            {
-                "type": "separator",
-                "color": "#B8B8B8"
-            }
-        ]
+        "layout": "horizontal",
+        "contents": [left_box, right_component]
     }
-
-
-def make_page_bubble(category, page_rows, page_no, total_pages, total_count):
-    body_contents = [
-        {
-            "type": "text",
-            "text": f"{category} 스펙 목록",
-            "weight": "bold",
-            "size": "lg",
-            "color": "#333333",
-            "wrap": True
-        },
-        {
-            "type": "text",
-            "text": f"{page_no}/{total_pages} 페이지  총 {total_count}건",
-            "size": "xs",
-            "color": "#666666",
-            "margin": "md"
-        }
-    ]
-
-    for row in page_rows:
-        body_contents.append(make_item_row(row))
-
-    return {
-        "type": "bubble",
-        "body": {
-            "type": "box",
-            "layout": "vertical",
-            "spacing": "sm",
-            "contents": body_contents
-        }
-    }
-
-
-def send_flex_message_groups(user_id, category, valid_rows):
-    page_chunks = chunk_list(valid_rows, ROWS_PER_PAGE)
-    total_pages = len(page_chunks)
-    total_count = len(valid_rows)
-
-    bubble_pages = []
-    for idx, page_rows in enumerate(page_chunks, start=1):
-        bubble_pages.append(
-            make_page_bubble(
-                category=category,
-                page_rows=page_rows,
-                page_no=idx,
-                total_pages=total_pages,
-                total_count=total_count
-            )
-        )
-
-    bubble_groups = chunk_list(bubble_pages, MAX_BUBBLES_PER_MESSAGE)
-
-    for group_index, bubble_group in enumerate(bubble_groups, start=1):
-        body = {
-            "content": {
-                "type": "flex",
-                "altText": f"{category} 스펙 목록 {group_index}",
-                "contents": {
-                    "type": "carousel",
-                    "contents": bubble_group
-                }
-            }
-        }
-        send_request(user_id, body)
 
 
 def send_flex_spec_pages(user_id, category):
@@ -374,110 +231,54 @@ def send_flex_spec_pages(user_id, category):
         send_text_message(user_id, f"{category} 목록이 없습니다.")
         return
 
-    valid_rows = []
-    invalid_rows = []
+    contents = [make_item_row(r) for r in rows[:10]]
 
-    for row in rows:
-        spec_code = safe_str(row.get("스펙코드", ""))
-        pdf_link = safe_str(row.get("PDF링크", ""))
+    body = {
+        "content": {
+            "type": "flex",
+            "altText": f"{category} 목록",
+            "contents": {
+                "type": "bubble",
+                "body": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": contents
+                }
+            }
+        }
+    }
 
-        if spec_code and is_valid_uri(pdf_link):
-            valid_rows.append(row)
-        else:
-            invalid_rows.append({
-                "스펙코드": spec_code,
-                "PDF링크": pdf_link
-            })
-
-    print("CATEGORY:", category)
-    print("ROW COUNT:", len(rows))
-    print("VALID ROW COUNT:", len(valid_rows))
-    print("INVALID ROWS:", invalid_rows)
-
-    if not valid_rows:
-        send_text_message(user_id, f"{category} 유효한 데이터가 없습니다.")
-        return
-
-    send_flex_message_groups(user_id, category, valid_rows)
+    send_request(user_id, body)
 
 
 def handle_message(user_id, raw_msg):
-    raw_msg = safe_str(raw_msg)
-    msg_normalized = normalize_text(raw_msg)
-    msg_upper = raw_msg.upper()
+    msg = normalize_text(raw_msg)
 
-    print("RAW MSG:", raw_msg)
-    print("NORMALIZED MSG:", msg_normalized)
-    print("UPPER MSG:", msg_upper)
-
-    if msg_normalized in FAQ_NORMALIZED:
-        send_text_message(user_id, FAQ_NORMALIZED[msg_normalized])
-        return
-
-    similar_key = find_similar_faq_key(msg_normalized)
-    if similar_key:
-        send_text_message(user_id, FAQ_NORMALIZED[similar_key])
-        return
-
-    if msg_normalized in ["스펙", "스팩", "SPEC"]:
+    if msg in ["스펙", "SPEC"]:
         send_category_menu(user_id)
         return
 
-    if msg_upper.startswith("CAT|"):
-        category = msg_upper.split("|", 1)[1].strip().upper()
+    if raw_msg.upper().startswith("CAT|"):
+        category = raw_msg.split("|")[1].upper()
         if category in CATEGORY_LIST:
             send_flex_spec_pages(user_id, category)
             return
 
-    if msg_upper in CATEGORY_LIST:
-        send_flex_spec_pages(user_id, msg_upper)
-        return
-
-    send_text_message(user_id, "원하시는 기능을 찾지 못했습니다.\n\n(입력 : 스펙, 전화번호, 주소, SSA, 열수축튜브 등) .")
-
-
-@app.route("/health", methods=["GET", "HEAD"])
-def health():
-    return "ok", 200
-
-
-@app.route("/", methods=["GET"])
-def home():
-    return "ok", 200
+    send_text_message(user_id, "명령을 이해하지 못했습니다.")
 
 
 @app.route("/", methods=["POST"])
 def bot():
-    req = request.get_json(force=True, silent=True) or {}
-    print("CALLBACK JSON:", req)
+    req = request.get_json(force=True)
+    user_id = req["source"]["userId"]
+    text = req["content"]["text"]
 
-    try:
-        source = req.get("source", {}) or {}
-        content = req.get("content", {}) or {}
-        user_id = safe_str(source.get("userId", ""))
+    handle_message(user_id, text)
+    return "ok", 200
 
-        if not user_id:
-            print("NO USER ID")
-            return "ok", 200
 
-        raw_msg = safe_str(content.get("text", ""))
-
-        if not raw_msg:
-            print("NO TEXT MESSAGE")
-            return "ok", 200
-
-        handle_message(user_id, raw_msg)
-
-    except Exception as e:
-        print("HANDLE ERROR:", str(e))
-        try:
-            source = req.get("source", {}) or {}
-            user_id = safe_str(source.get("userId", ""))
-            if user_id:
-                send_text_message(user_id, "처리 중 오류가 발생했습니다.")
-        except Exception as send_err:
-            print("ERROR NOTICE FAILED:", str(send_err))
-
+@app.route("/health", methods=["GET"])
+def health():
     return "ok", 200
 
 
