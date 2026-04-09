@@ -10,7 +10,7 @@ from difflib import get_close_matches
 app = Flask(__name__)
 
 BOT_ID = os.environ["BOT_ID"]
-CATEGORY_LIST = ["HKMC", "GM", "RENAULT", "APTIV"]
+CATEGORY_LIST = ["HKMC", "GM", "RENAULT", "APTIV", "UL"]
 
 FAQ = {
     "주소": "서울시 ...\n한미케이블 본사",
