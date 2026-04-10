@@ -1,218 +1,228 @@
-# ▼▼▼ 기존 코드 그대로 유지 + 아래만 추가 ▼▼▼
+from flask import Flask, request
+import csv
+import requests
+import os
+import time
+import jwt
+from threading import Lock
+from difflib import get_close_matches
 
-# =========================
-# PRODUCT / OEM CSV 로드 추가
-# =========================
+app = Flask(__name__)
 
-PRODUCT_PATH = os.path.join(BASE_DIR, "PRODUCT.csv")
-OEM_PATH = os.path.join(BASE_DIR, "OEM.csv")
+BOT_ID = os.environ["BOT_ID"]
 
+CATEGORY_LIST = ["HKMC", "GM", "RENAULT", "APTIV", "UL"]
+
+data = []
+FAQ = {}
 product_data = []
 oem_data = []
 
-try:
-    with open(PRODUCT_PATH, newline="", encoding="utf-8-sig") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            if safe_str(row.get("제품명")):
-                product_data.append(row)
-except:
-    print("PRODUCT.csv 로드 실패")
+token_lock = Lock()
+cached_token = None
+cached_token_expire_at = 0
 
-try:
-    with open(OEM_PATH, newline="", encoding="utf-8-sig") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            if safe_str(row.get("OEM")):
-                oem_data.append(row)
-except:
-    print("OEM.csv 로드 실패")
+session = requests.Session()
 
+def normalize_text(text):
+    return str(text or "").strip().upper().replace(" ", "")
 
-# =========================
-# PRODUCT 기능
-# =========================
+def safe_str(v):
+    return str(v or "").strip()
 
-def send_product_menu(user_id):
-    actions = []
+def is_valid_uri(uri):
+    uri = safe_str(uri)
+    return uri.startswith("http")
 
-    for row in product_data:
-        name = safe_str(row.get("제품명"))
-        if name:
-            actions.append({
-                "type": "message",
-                "label": name,
-                "text": f"PROD|{name}"
-            })
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-    if not actions:
-        send_text_message(user_id, "제품 데이터가 없습니다.")
-        return
+# =====================
+# DATA (스펙)
+# =====================
+with open(os.path.join(BASE_DIR, "data.csv"), newline="", encoding="utf-8-sig") as f:
+    for row in csv.DictReader(f):
+        if safe_str(row.get("사용여부")).upper() == "Y":
+            data.append(row)
 
-    body = {
+# =====================
+# FAQ
+# =====================
+with open(os.path.join(BASE_DIR, "faq.csv"), newline="", encoding="utf-8-sig") as f:
+    for row in csv.DictReader(f):
+        if safe_str(row.get("사용여부")).upper() == "Y":
+            FAQ[row["질문"]] = row["답변"]
+
+FAQ_NORMALIZED = {normalize_text(k): v for k, v in FAQ.items()}
+
+# =====================
+# PRODUCT / OEM
+# =====================
+with open(os.path.join(BASE_DIR, "PRODUCT.csv"), newline="", encoding="utf-8-sig") as f:
+    product_data = list(csv.DictReader(f))
+
+with open(os.path.join(BASE_DIR, "OEM.csv"), newline="", encoding="utf-8-sig") as f:
+    oem_data = list(csv.DictReader(f))
+
+# =====================
+# TOKEN
+# =====================
+def get_token():
+    global cached_token, cached_token_expire_at
+    now = int(time.time())
+
+    if cached_token and now < cached_token_expire_at:
+        return cached_token
+
+    payload = {
+        "iss": os.environ["CLIENT_ID"],
+        "sub": os.environ["CLIENT_EMAIL"],
+        "iat": now,
+        "exp": now + 3600
+    }
+
+    private_key = os.environ["PRIVATE_KEY"].replace("\\n", "\n")
+    jwt_token = jwt.encode(payload, private_key, algorithm="RS256")
+
+    r = session.post(
+        "https://auth.worksmobile.com/oauth2/v2.0/token",
+        data={
+            "assertion": jwt_token,
+            "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+            "client_id": os.environ["CLIENT_ID"],
+            "client_secret": os.environ["CLIENT_SECRET"],
+            "scope": "bot.message"
+        }
+    )
+
+    token = r.json()["access_token"]
+    cached_token = token
+    cached_token_expire_at = now + 3000
+    return token
+
+def send(user_id, body):
+    token = get_token()
+    session.post(
+        f"https://www.worksapis.com/v1.0/bots/{BOT_ID}/users/{user_id}/messages",
+        headers={"Authorization": f"Bearer {token}"},
+        json=body
+    )
+
+def send_text(user_id, text):
+    send(user_id, {"content": {"type": "text", "text": text}})
+
+# =====================
+# 스펙 메뉴 (복구)
+# =====================
+def send_category_menu(user_id):
+    send(user_id, {
         "content": {
             "type": "button_template",
-            "contentText": "제품을 선택하세요",
-            "actions": actions[:5]
+            "contentText": "스펙 선택",
+            "actions": [
+                {"type": "message", "label": c, "text": c}
+                for c in CATEGORY_LIST
+            ]
         }
-    }
-    send_request(user_id, body)
+    })
 
+# =====================
+# 스펙 출력 (간단 복구)
+# =====================
+def send_spec(user_id, category):
+    rows = [r for r in data if r.get("구분") == category]
+    if not rows:
+        send_text(user_id, "데이터 없음")
+        return
 
-def send_product_flex(user_id, row):
+    text = "\n".join([r.get("스펙코드", "-") for r in rows[:10]])
+    send_text(user_id, text)
+
+# =====================
+# PRODUCT FLEX
+# =====================
+def send_product(user_id, row):
     name = safe_str(row.get("제품명"))
     desc = safe_str(row.get("설명"))
     img = safe_str(row.get("이미지"))
 
-    if not is_valid_uri(img):
-        send_text_message(user_id, f"{name}\n{desc}")
-        return
-
-    body = {
-        "content": {
-            "type": "flex",
-            "altText": name,
-            "contents": {
-                "type": "bubble",
-                "hero": {
-                    "type": "image",
-                    "url": img,
-                    "size": "full"
-                },
-                "body": {
-                    "type": "box",
-                    "layout": "vertical",
-                    "contents": [
-                        {"type": "text", "text": name, "weight": "bold"},
-                        {"type": "text", "text": desc, "wrap": True}
-                    ]
-                }
-            }
+    bubble = {
+        "type": "bubble",
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [{"type": "text", "text": name}]
         }
     }
-    send_request(user_id, body)
 
+    if desc:
+        bubble["body"]["contents"].append({"type": "text", "text": desc})
 
-# =========================
-# OEM 기능
-# =========================
+    if is_valid_uri(img):
+        bubble["hero"] = {"type": "image", "url": img}
 
-def send_oem_flex(user_id):
+    send(user_id, {
+        "content": {"type": "flex", "altText": name, "contents": bubble}
+    })
+
+# =====================
+# OEM
+# =====================
+def send_oem(user_id):
     bubbles = []
-
-    for row in oem_data:
-        name = safe_str(row.get("OEM"))
-        img = safe_str(row.get("이미지"))
-        pdf = safe_str(row.get("PDF"))
-
-        bubble = {
+    for r in oem_data:
+        bubbles.append({
             "type": "bubble",
             "body": {
                 "type": "box",
                 "layout": "vertical",
-                "contents": [
-                    {"type": "text", "text": name, "weight": "bold"}
-                ]
+                "contents": [{"type": "text", "text": r.get("OEM", "-")}]
             }
-        }
+        })
 
-        if is_valid_uri(img):
-            bubble["hero"] = {
-                "type": "image",
-                "url": img,
-                "size": "full"
-            }
-
-        if is_valid_uri(pdf):
-            bubble["footer"] = {
-                "type": "box",
-                "layout": "vertical",
-                "contents": [{
-                    "type": "button",
-                    "action": {
-                        "type": "uri",
-                        "label": "다운로드",
-                        "uri": pdf
-                    }
-                }]
-            }
-
-        bubbles.append(bubble)
-
-    if not bubbles:
-        send_text_message(user_id, "OEM 데이터가 없습니다.")
-        return
-
-    body = {
+    send(user_id, {
         "content": {
             "type": "flex",
-            "altText": "OEM 목록",
-            "contents": {
-                "type": "carousel",
-                "contents": bubbles[:10]
-            }
+            "altText": "OEM",
+            "contents": {"type": "carousel", "contents": bubbles[:10]}
         }
-    }
+    })
 
-    send_request(user_id, body)
+# =====================
+# MAIN
+# =====================
+def handle_message(user_id, msg):
+    norm = normalize_text(msg)
 
-
-# =========================
-# handle_message에 추가만
-# =========================
-
-def handle_message(user_id, raw_msg):
-    raw_msg = safe_str(raw_msg)
-    msg_normalized = normalize_text(raw_msg)
-    msg_upper = raw_msg.upper()
-
-    # FAQ
-    if msg_normalized in FAQ_NORMALIZED:
-        send_text_message(user_id, FAQ_NORMALIZED[msg_normalized])
+    if norm in FAQ_NORMALIZED:
+        send_text(user_id, FAQ_NORMALIZED[norm])
         return
 
-    similar_key = find_similar_faq_key(msg_normalized)
-    if similar_key:
-        send_text_message(user_id, FAQ_NORMALIZED[similar_key])
+    # PRODUCT 직접
+    for r in product_data:
+        if normalize_text(r.get("제품명")) == norm:
+            send_product(user_id, r)
+            return
+
+    if norm == "OEM":
+        send_oem(user_id)
         return
 
-    # ------------------
-    # PRODUCT 추가
-    # ------------------
-    if msg_normalized == "제품":
-        send_product_menu(user_id)
-        return
-
-    if msg_upper.startswith("PROD|"):
-        name = msg_upper.split("|")[1]
-
-        for row in product_data:
-            if normalize_text(row.get("제품명")) == normalize_text(name):
-                send_product_flex(user_id, row)
-                return
-
-    # ------------------
-    # OEM 추가
-    # ------------------
-    if msg_normalized == "OEM":
-        send_oem_flex(user_id)
-        return
-
-    # ------------------
-    # 기존 스펙 그대로
-    # ------------------
-    if msg_normalized in ["스펙", "스팩", "SPEC"]:
+    if norm in ["스펙", "SPEC"]:
         send_category_menu(user_id)
         return
 
-    if msg_upper.startswith("CAT|"):
-        category = msg_upper.split("|", 1)[1].strip().upper()
-        if category in CATEGORY_LIST:
-            send_flex_spec_pages(user_id, category)
-            return
-
-    if msg_upper in CATEGORY_LIST:
-        send_flex_spec_pages(user_id, msg_upper)
+    if norm in CATEGORY_LIST:
+        send_spec(user_id, norm)
         return
 
-    send_text_message(user_id, "원하시는 기능을 찾지 못했습니다.")
+    send_text(user_id, "원하시는 기능을 찾지 못했습니다.")
+
+@app.route("/", methods=["POST"])
+def bot():
+    req = request.get_json()
+    handle_message(req["source"]["userId"], req["content"]["text"])
+    return "ok"
+
+@app.route("/health")
+def health():
+    return "ok"
