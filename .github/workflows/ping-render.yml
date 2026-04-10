@@ -18,14 +18,25 @@ on:
     - cron: '0 16 * * *'
 
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'manual mode'
+        required: true
+        default: 'burst'
+        type: choice
+        options:
+          - burst
+          - keep_alive
 
 jobs:
   wakeup_burst:
-    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 22 * * *'
+    if: |
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'burst') ||
+      (github.event_name == 'schedule' && github.event.schedule == '0 22 * * *')
     runs-on: ubuntu-latest
 
     steps:
-      - name: Burst wake-up at 07:00 KST
+      - name: Burst wake-up
         run: |
           RENDER_WAKE_URL="https://naver-bot-1-24jt.onrender.com/wake"
 
@@ -49,7 +60,9 @@ jobs:
           echo "Wake-up burst done"
 
   keep_alive:
-    if: github.event_name == 'schedule' && github.event.schedule != '0 22 * * *'
+    if: |
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'keep_alive') ||
+      (github.event_name == 'schedule' && github.event.schedule != '0 22 * * *')
     runs-on: ubuntu-latest
 
     steps:
