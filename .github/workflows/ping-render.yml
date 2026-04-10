@@ -1,0 +1,19 @@
+name: Ping Render
+
+on:
+  schedule:
+    - cron: '2-59/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping /wake
+        run: |
+          code=$(curl -L -s -o /dev/null -w "%{http_code}" https://naver-bot-1-24jt.onrender.com/wake)
+          echo "HTTP $code"
+          if [ "$code" -ne 200 ]; then
+            exit 1
+          fi
