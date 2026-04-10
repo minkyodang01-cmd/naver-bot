@@ -1,0 +1,20 @@
+﻿OEM,HANMI P/N,OEM P/NO,DESCRIPTION,Temp,Type,PDF 링크,순서
+HKMC,LSA,18508-30300,Heat Shrink Adhesive Tube,80℃,Dual Wall,,1
+HKMC,ESA(RE),18508-30300,Heat Shrink Adhesive Tube,80℃,Dual Wall,,2
+HKMC,SSA,18508-30300,Heat Shrink Adhesive Tube,135℃,Dual Wall,,3
+HKMC,HSA,18508-30300,Heat Shrink Adhesive Tube,150℃,Dual Wall,,4
+HKMC,HSG,18509-30100,Heat Shrink Tube,125℃,Single Wall,,5
+HKMC,HOE,18512-30100,Heat Resistant Tube,120℃,Single Wall,,6
+HKMC,HOX,18512-30100,Heat Resistant Tube,150℃,Single Wall,,7
+HKMC,BES2215,18506-30300,Braided Expandable Sleeve Tube,135℃,,,8
+HKMC,BES(ATM),18506-30300,"Braided Expandable Sleeve Tube
+(Auto Transmission)",150℃,,,9
+HKMC,SPT,18504-20100,Split Tutbe (Hard Tube),110℃,,,10
+HKMC,RL,18504-20200,ROLLING TUBE,135℃,,,1
+HKMC,RD,18503-18700,CRUSH SHIELD,150℃,,,2
+RENAULT,SSA,242978039R,Heat Shrink Adhesive Tube,135℃,Dual Wall,,1
+GMW,SSA (접착_난연PO),HC-CDB-PCA-BK,SSA TUBE,125℃,Dual Wall,,1
+GMW,SSA (접착_난연PA),HC-CEB-PCA-BK,SSA TUBE,125℃,Dual Wall,,2
+GMW,RD,"SB-D8D-ACB-BK
+SB-D8D-ACB-OR",RD High Abrasion Sleeve,150℃,,,3
+Daimler,SSA,A 000 982 85 17,Heat Shrink Adhesive Tube,120℃,Dual Wall,,4

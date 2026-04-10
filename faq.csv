@@ -1,66 +1,157 @@
-질문,답변,사용여부
-전화번호,"* 본사 051-831-7151
+﻿구분,질문키,응답유형,응답텍스트,이미지링크,버튼라벨,버튼링크,정렬순서,사용여부
+FAQ,전화번호,"* 본사 051-831-7151
 * 지사 051-972-7153
-* 화성 031-353-6132",Y
-바츠코드, #0269A,Y
-바츠, #0269A,Y
-주소,"* 본사 
+* 화성 031-353-6132",text,,,,1,Y
+FAQ,바츠코드, #0269A,text,,,,1,Y
+FAQ,바츠, #0269A,text,,,,1,Y
+FAQ,주소,"* [ 본사 ] 
   부산 강서구 녹산산단 382로 14번가길 9
+  9, Noksansandan 382-ro 14beonga-gil,  Gangseo-gu, 
+  Busan, Korea
 
-* 지사 051-972-7153
+* [ 지사 ]
+  강서구 과학산단1로103번길 38
+  38, Gwahaksandan 1-ro 103beon-gil, Gangseo-gu,
+  Busan, Korea
 
-* 화성 031-353-6132
-  경기 화성시 양감면 사릅재길 138-64 ",Y
-사업자,"* 본사 603-81-39598
-* 화성 124-85-35739",Y
-사업자등록번호,"* 본사 603-81-39598
-* 화성 124-85-35739",Y
-법인등록번호,* 본사/지사  180111-0300664,Y
-DUNS,"* 
+* [ 화성 ]
+  경기 화성시 양감면 사릅재길 138-64 
+  138-64, Sareupjae-gil, Yanggam-myeon, Manse-gu, 
+  Hwaseong-si, Gyeonggi-do, Republic of Korea",text,,,,1,Y
+FAQ,사업자,"* 본사 603-81-39598
+* 화성 124-85-35739",text,,,,1,Y
+FAQ,사업자등록번호,"* 본사 603-81-39598
+* 화성 124-85-35739",text,,,,1,Y
+FAQ,법인등록번호,* 본사/지사  180111-0300664,text,,,,1,Y
+FAQ,DUNS,"* D-U-N-S® Number : 631149171
 * 매년 10월 갱신 필요
-* 담당자 : 최민교 과장",Y
-던스넘버,"* 
+* 담당자 : 최민교 과장",text,,,,1,Y
+FAQ,던스넘버,"* D-U-N-S® Number : 631149171
 * 매년 10월 갱신 필요
-* 담당자 : 최민교 과장",Y
-던스,"* 
+* 담당자 : 최민교 과장",text,,,,1,Y
+FAQ,던스,"* D-U-N-S® Number : 631149171
 * 매년 10월 갱신 필요
-* 담당자 : 최민교 과장",Y
-계좌,"* 국내 계좌
-* 해외 계좌",Y
-GM코드,,Y
-DHL,,Y
-공정도," 한가지 택1하여 타이핑 하세요 
- [ 접착튜브 공정도 / 편조 공정도 / 롤링 공정도 ]",Y
-접착튜브 공정도,접착튜브 공정도 _ 하기 PPT 자료  참조,Y
-편조 공정도,편조튜브 공정도 _ 하기 PPT 자료  참조,Y
-롤링 공정도,롤링튜브 공정도 _ 하기 PPT 자료  참조,Y
-사장님,최경복 대표이사 님,Y
-부사장님,최경환 부사장 님,Y
-이찬희,퇴사 ( 현재 요양 중 ),Y
-도용대,"퇴사 ( 현재 ""현대수산"" 대표 )",Y
-홈페이지,http://hanmicable.kr/,Y
-홈,http://hanmicable.kr/,Y
-GPC,"* 관리자 : 방정배 과장 - 승인후 가입완료가능
-https://gpc.hyundai.co.kr/gpc/main/index.do",Y
-상생협력,"* 관리자 : 송대성 과장
-https://winwin23.hyundai.com/",Y
-상생,"* 관리자 : 송대성 과장
-https://winwin23.hyundai.com/",Y
-안녕?,"안녕하세요, 일하세요",Y
-안녕,"안녕하세요, 일하세요",Y
-출근,풉,Y
-퇴근,"안녕히가세요, 수고하셨습니다.",Y
-시작하기,"간단한 명령어를 입력 해주세요
+* 담당자 : 최민교 과장",text,,,,1,Y
+FAQ,계좌,"* 해외 입금 계좌
+  Bank account information
+  
+  Name : HANMICABLE CO.,LTD.
+  Bank account number : 453-004693-56-00013
+  Currency of the bank account :  USD
+  SWIFT CODE : IBKOKRSE
+  Bank name : Industrial Bank of Korea
+  Bank branch name : NOKSAN JUNGANG",text,,,,1,Y
+FAQ,GM코드,"* SSA (접착_난연PO)
+ ㄴ HC-CDB-PCA-BK
+
+* SSA (접착_난연PA)
+ ㄴ HC-CEB-PCA-BK
+
+* RD
+ ㄴ SB-D8D-ACB-BK / SB-D8D-ACB-OR",text,,,,1,Y
+FAQ,DHL," 한미케이블 DHL코드 (착불계정)
+
+* 수출 (한국->해외)  590381480
+* 수입 (해외->한국)  968388394",text,,,,1,Y
+FAQ,공정도," 한가지 택1하여 타이핑 하세요 
+ [ 수축튜브 공정도 / 편조 공정도 / 롤링 공정도 ]",text,,,,1,Y
+FAQ,수축튜브 공정도,접착튜브 공정도 _  PPT 자료  참조,text_button,,다운,,1,Y
+FAQ,편조 공정도,편조튜브 공정도 _  PPT 자료  참조,text_button,,다운,,1,Y
+FAQ,롤링 공정도,롤링튜브 공정도 _  PPT 자료  참조,text_button,,다운,,1,Y
+FAQ,사장님,최경복 대표이사 님,text,,,,1,Y
+FAQ,부사장님,최경환 부사장 님,text,,,,1,Y
+FAQ,이찬희,퇴사 ( 현재 요양 중 ),text,,,,1,Y
+FAQ,도용대,"퇴사 ( 현재 ""현대수산"" 대표 )",text,,,,1,Y
+FAQ,송대성,찬희를 그리워 하며 눈물로 지세우는….......,text,,,,1,Y
+FAQ,홈페이지,http://hanmicable.kr/,text,,,,1,Y
+FAQ,홈,http://hanmicable.kr/,text,,,,1,Y
+FAQ,GPC,"* 관리자 : 방정배 과장 - 승인후 가입완료가능
+https://gpc.hyundai.co.kr/gpc/main/index.do",text,,,,1,Y
+FAQ,상생협력,"* 관리자 : 송대성 과장
+https://winwin23.hyundai.com/",text,,,,1,Y
+FAQ,상생,"* 관리자 : 송대성 과장
+https://winwin23.hyundai.com/",text,,,,1,Y
+FAQ,하이,하이,text,,,,1,Y
+FAQ,누구냐,넌 누군데,text,,,,1,Y
+FAQ,너 누구냐,넌 누군데,text,,,,1,Y
+FAQ,안녕?,"안녕하세요, 일하세요",text,,,,1,Y
+FAQ,안녕,"안녕하세요, 일하세요",text,,,,1,Y
+FAQ,출근,….,text,,,,1,Y
+FAQ,퇴근,"안녕히가세요, 수고하셨습니다.",text,,,,1,Y
+FAQ,시작하기,"간단한 명령어를 입력 해주세요
+
 [ 스펙, 주소, 홈페이지, 공정도, 승인도, 도면, 던스넘버 등등 업무와 관련된 단어 ]
 
-※ 업데이트 여부는 관리자 업무 여유시간에 따라 다름
-※ AI가 아닙니다. 단순 Q&A ( * 비용지원시 AI 연동가능 )
-※ 개인 무료 서버 - 밤12시 이후 새벽 응답속도 느림",Y
-도면,""" 제품 "" 또는  품명(Ex SSA, HSG)을 타이핑시 제품정보와 도면정보가 같이 나옵니다.",Y
-조직도,가지고 계신분은 자료좀 주세요 ^^,Y
-원산지,최민교 과장 문의,Y
-HSCODE," [1] 391732  : 수축/내열 튜브
+※ 단순 Q&A 
+※ 개인 무료 서버",text,,,,1,Y
+FAQ,도면,"품명(Ex SSA, HSG)을 타이핑시 제품정보와 도면정보가 같이 나옵니다.",text,,,,1,Y
+FAQ,조직도,가지고 계신분은 자료좀 주세요 ^^,text,,,,1,Y
+FAQ,원산지,최민교 과장 문의,text,,,,1,Y
+FAQ,HSCODE," [1] 391732  : 수축/내열 튜브
  [2] 580810  : 편조 튜브
  [3] 392690  : SPT/SPR 튜브
- [4] 580632 :  RL/RD 튜브
- [5] ",Y
+ [4] 580632  : RL/RD 튜브
+ [5] ",text,,,,1,Y
+FAQ,EHM15,PFH-1_,text,,,,1,Y
+FAQ,EHM16,PF-3_,text,,,,1,Y
+FAQ,OHM16,WHS,text,,,,1,Y
+FAQ,UASKA,Bus bar,text,,,,1,Y
+FAQ,UHM05,HS(G),text,,,,1,Y
+FAQ,UHM06,LSA,text,,,,1,Y
+FAQ,UHM08,LSA(CL),text,,,,1,Y
+FAQ,UHM16,HOE,text,,,,1,Y
+FAQ,UHM21,HOX,text,,,,1,Y
+FAQ,UHM28,SSA,text,,,,1,Y
+FAQ,UHM32,"BES(ATM), 2215",text,,,,1,Y
+FAQ,UHM33,SPT,text,,,,1,Y
+FAQ,UHM35,HSG(RE),text,,,,1,Y
+FAQ,UHM36,SAEH,text,,,,1,Y
+FAQ,UHM37,RL,text,,,,1,Y
+FAQ,UHM38,RL121,text,,,,1,Y
+FAQ,UHM40,SPR(WH),text,,,,1,Y
+FAQ,UHM41,SPR,text,,,,1,Y
+FAQ,UHM69,CAP-3,text,,,,1,Y
+FAQ,UHM75,HSG(BL),text,,,,1,Y
+FAQ,UHM95,FP,text,,,,1,Y
+FAQ,UHMA5,HSG(UL),text,,,,1,Y
+FAQ,UHMAL,HSG(BL)UL,text,,,,1,Y
+FAQ,UHMB8,SSA(UL)무,text,,,,1,Y
+FAQ,UHMF0,SPT,text,,,,1,Y
+FAQ,UHMH0,HOE,text,,,,1,Y
+FAQ,UHMH2,HOE,text,,,,1,Y
+FAQ,UHMH7,HOX,text,,,,1,Y
+FAQ,UHMJ0,BES2215,text,,,,1,Y
+FAQ,UHMJ3,RL121,text,,,,1,Y
+FAQ,UHMJ4,RL121,text,,,,1,Y
+FAQ,UHMJA,BES2215,text,,,,1,Y
+FAQ,UHMJB,BES2215,text,,,,1,Y
+FAQ,UHMJE,RD(BK),text,,,,1,Y
+FAQ,UHMJF,RD(OR),text,,,,1,Y
+FAQ,UHMK0,SPR,text,,,,1,Y
+FAQ,UHMKA,Bus bar,text,,,,1,Y
+FAQ,UHMKC,HIT122,text,,,,1,Y
+FAQ,UHMKD,SDT(RD),text,,,,1,Y
+FAQ,UHMM0,HS(G),text,,,,1,Y
+FAQ,UHMM1,HSG(RE),text,,,,1,Y
+FAQ,UHMM2,HSG(BL),text,,,,1,Y
+FAQ,UHMM6,LSA,text,,,,1,Y
+FAQ,UHMM8,SSA,text,,,,1,Y
+FAQ,UHMMA,SSA(UL)무,text,,,,1,Y
+FAQ,UHMMC,FP,text,,,,1,Y
+FAQ,UHMMP,HSG(RE)UL,text,,,,1,Y
+FAQ,UHMMS,HSG(UL),text,,,,1,Y
+FAQ,UHMMT,HSG(BL)UL,text,,,,1,Y
+FAQ,UHMMU,HSG(RE)UL,text,,,,1,Y
+FAQ,UHMMV,HSG(WH)UL,text,,,,1,Y
+FAQ,18508-30300,LSA,text,,,,1,Y
+FAQ,18508-30300,ESA(RE),text,,,,1,Y
+FAQ,18508-30300,SSA,text,,,,1,Y
+FAQ,18508-30300,HSA,text,,,,1,Y
+FAQ,18509-30100,HSG,text,,,,1,Y
+FAQ,18512-30100,HOE,text,,,,1,Y
+FAQ,18512-30100,HOX,text,,,,1,Y
+FAQ,18506-30300,BES2215,text,,,,1,Y
+FAQ,18506-30300,BES(ATM),text,,,,1,Y
+FAQ,18504-20100,SPT,text,,,,1,Y
+FAQ,18504-20200,RL,text,,,,1,Y
+FAQ,18503-18700,RD,text,,,,1,Y
