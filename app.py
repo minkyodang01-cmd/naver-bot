@@ -4,25 +4,14 @@ import requests
 import os
 import time
 import jwt
-from threading import Lock
-from difflib import get_close_matches
 
 app = Flask(__name__)
 
 BOT_ID = os.environ.get("BOT_ID")
 
-CATEGORY_LIST = ["HKMC", "GM", "RENAULT", "APTIV", "UL"]
-
-data = []
-FAQ = {}
-product_data = []
-oem_data = []
-
-session = requests.Session()
-
-# =====================
-# 기본 함수
-# =====================
+# -----------------
+# 유틸
+# -----------------
 def normalize_text(text):
     return str(text or "").strip().upper().replace(" ", "")
 
@@ -32,43 +21,43 @@ def safe_str(v):
 def is_valid_uri(uri):
     return safe_str(uri).startswith("http")
 
-# =====================
-# 파일 로드 (절대 죽지 않게)
-# =====================
+# -----------------
+# 데이터 로드 (절대 안죽게)
+# -----------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-def load_csv_safe(path):
+def load_csv(name):
     try:
-        with open(path, newline="", encoding="utf-8-sig") as f:
+        with open(os.path.join(BASE_DIR, name), newline="", encoding="utf-8-sig") as f:
             return list(csv.DictReader(f))
-    except:
+    except Exception as e:
+        print("CSV LOAD ERROR:", name, e)
         return []
 
-data = load_csv_safe(os.path.join(BASE_DIR, "data.csv"))
-faq_raw = load_csv_safe(os.path.join(BASE_DIR, "faq.csv"))
-product_data = load_csv_safe(os.path.join(BASE_DIR, "PRODUCT.csv"))
-oem_data = load_csv_safe(os.path.join(BASE_DIR, "OEM.csv"))
+data = load_csv("data.csv")
+faq_raw = load_csv("faq.csv")
+product_data = load_csv("PRODUCT.csv")
+oem_data = load_csv("OEM.csv")
 
-for row in faq_raw:
-    if safe_str(row.get("사용여부")).upper() == "Y":
-        q = safe_str(row.get("질문"))
-        a = safe_str(row.get("답변"))
+FAQ = {}
+for r in faq_raw:
+    if safe_str(r.get("사용여부")).upper() == "Y":
+        q = safe_str(r.get("질문"))
+        a = safe_str(r.get("답변"))
         if q and a:
-            FAQ[q] = a
+            FAQ[normalize_text(q)] = a
 
-FAQ_NORMALIZED = {normalize_text(k): v for k, v in FAQ.items()}
-
-# =====================
+# -----------------
 # TOKEN
-# =====================
+# -----------------
 token = None
-token_expire = 0
+expire = 0
 
 def get_token():
-    global token, token_expire
+    global token, expire
     now = int(time.time())
 
-    if token and now < token_expire:
+    if token and now < expire:
         return token
 
     try:
@@ -94,34 +83,40 @@ def get_token():
         )
 
         token = r.json()["access_token"]
-        token_expire = now + 3000
+        expire = now + 3000
         return token
 
-    except:
+    except Exception as e:
+        print("TOKEN ERROR:", e)
         return None
 
 def send(user_id, body):
     t = get_token()
     if not t:
+        print("SEND FAIL: NO TOKEN")
         return
 
-    requests.post(
-        f"https://www.worksapis.com/v1.0/bots/{BOT_ID}/users/{user_id}/messages",
-        headers={"Authorization": f"Bearer {t}"},
-        json=body
-    )
+    try:
+        r = requests.post(
+            f"https://www.worksapis.com/v1.0/bots/{BOT_ID}/users/{user_id}/messages",
+            headers={"Authorization": f"Bearer {t}"},
+            json=body
+        )
+        print("SEND:", r.status_code)
+    except Exception as e:
+        print("SEND ERROR:", e)
 
 def send_text(user_id, text):
     send(user_id, {"content": {"type": "text", "text": text}})
 
-# =====================
-# 안전 기능들
-# =====================
+# -----------------
+# 기능들 (전부 정의)
+# -----------------
 def send_category_menu(user_id):
     send_text(user_id, "스펙 기능 준비중")
 
 def send_spec(user_id, category):
-    rows = [r for r in data if safe_str(r.get("구분")).upper() == category]
+    rows = [r for r in data if normalize_text(r.get("구분")) == category]
     if not rows:
         send_text(user_id, "데이터 없음")
         return
@@ -148,19 +143,24 @@ def send_product(user_id, row):
         bubble["hero"] = {"type": "image", "url": img}
 
     send(user_id, {
-        "content": {"type": "flex", "altText": name, "contents": bubble}
+        "content": {
+            "type": "flex",
+            "altText": name,
+            "contents": bubble
+        }
     })
 
 def send_oem(user_id):
     bubbles = []
-
     for r in oem_data:
         bubbles.append({
             "type": "bubble",
             "body": {
                 "type": "box",
                 "layout": "vertical",
-                "contents": [{"type": "text", "text": safe_str(r.get("OEM"))}]
+                "contents": [
+                    {"type": "text", "text": safe_str(r.get("OEM"))}
+                ]
             }
         })
 
@@ -172,22 +172,25 @@ def send_oem(user_id):
         "content": {
             "type": "flex",
             "altText": "OEM",
-            "contents": {"type": "carousel", "contents": bubbles[:10]}
+            "contents": {
+                "type": "carousel",
+                "contents": bubbles[:10]
+            }
         }
     })
 
-# =====================
-# MAIN
-# =====================
+# -----------------
+# 메인
+# -----------------
 def handle_message(user_id, msg):
     norm = normalize_text(msg)
 
     # FAQ
-    if norm in FAQ_NORMALIZED:
-        send_text(user_id, FAQ_NORMALIZED[norm])
+    if norm in FAQ:
+        send_text(user_id, FAQ[norm])
         return
 
-    # PRODUCT 직접 매칭
+    # PRODUCT 직접
     for r in product_data:
         if normalize_text(r.get("제품명")) == norm:
             send_product(user_id, r)
@@ -201,10 +204,6 @@ def handle_message(user_id, msg):
     # 스펙
     if norm in ["스펙", "SPEC"]:
         send_category_menu(user_id)
-        return
-
-    if norm in CATEGORY_LIST:
-        send_spec(user_id, norm)
         return
 
     send_text(user_id, "원하시는 기능을 찾지 못했습니다.")
