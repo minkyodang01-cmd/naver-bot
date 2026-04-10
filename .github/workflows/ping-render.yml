@@ -10,11 +10,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Ping multiple times (강제 깨우기)
+      - name: Ping /wake 5 times
         run: |
-          for i in {1..5}
+          for i in 1 2 3 4 5
           do
             echo "PING $i"
-            curl -L -s -o /dev/null -w "%{http_code}\n" https://naver-bot-1-24jt.onrender.com/wake
+            code=$(curl -L -s -o /dev/null -w "%{http_code}" https://naver-bot-1-24jt.onrender.com/wake)
+            echo "HTTP $code"
             sleep 2
           done
