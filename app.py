@@ -9,7 +9,7 @@ from difflib import get_close_matches
 
 app = Flask(__name__)
 
-BOT_ID = os.environ["BOT_ID"]
+BOT_ID = os.environ.get("BOT_ID")
 
 CATEGORY_LIST = ["HKMC", "GM", "RENAULT", "APTIV", "UL"]
 
@@ -18,12 +18,11 @@ FAQ = {}
 product_data = []
 oem_data = []
 
-token_lock = Lock()
-cached_token = None
-cached_token_expire_at = 0
-
 session = requests.Session()
 
+# =====================
+# 기본 함수
+# =====================
 def normalize_text(text):
     return str(text or "").strip().upper().replace(" ", "")
 
@@ -31,79 +30,84 @@ def safe_str(v):
     return str(v or "").strip()
 
 def is_valid_uri(uri):
-    uri = safe_str(uri)
-    return uri.startswith("http")
+    return safe_str(uri).startswith("http")
 
+# =====================
+# 파일 로드 (절대 죽지 않게)
+# =====================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# =====================
-# DATA (스펙)
-# =====================
-with open(os.path.join(BASE_DIR, "data.csv"), newline="", encoding="utf-8-sig") as f:
-    for row in csv.DictReader(f):
-        if safe_str(row.get("사용여부")).upper() == "Y":
-            data.append(row)
+def load_csv_safe(path):
+    try:
+        with open(path, newline="", encoding="utf-8-sig") as f:
+            return list(csv.DictReader(f))
+    except:
+        return []
 
-# =====================
-# FAQ
-# =====================
-with open(os.path.join(BASE_DIR, "faq.csv"), newline="", encoding="utf-8-sig") as f:
-    for row in csv.DictReader(f):
-        if safe_str(row.get("사용여부")).upper() == "Y":
-            FAQ[row["질문"]] = row["답변"]
+data = load_csv_safe(os.path.join(BASE_DIR, "data.csv"))
+faq_raw = load_csv_safe(os.path.join(BASE_DIR, "faq.csv"))
+product_data = load_csv_safe(os.path.join(BASE_DIR, "PRODUCT.csv"))
+oem_data = load_csv_safe(os.path.join(BASE_DIR, "OEM.csv"))
+
+for row in faq_raw:
+    if safe_str(row.get("사용여부")).upper() == "Y":
+        q = safe_str(row.get("질문"))
+        a = safe_str(row.get("답변"))
+        if q and a:
+            FAQ[q] = a
 
 FAQ_NORMALIZED = {normalize_text(k): v for k, v in FAQ.items()}
 
 # =====================
-# PRODUCT / OEM
-# =====================
-with open(os.path.join(BASE_DIR, "PRODUCT.csv"), newline="", encoding="utf-8-sig") as f:
-    product_data = list(csv.DictReader(f))
-
-with open(os.path.join(BASE_DIR, "OEM.csv"), newline="", encoding="utf-8-sig") as f:
-    oem_data = list(csv.DictReader(f))
-
-# =====================
 # TOKEN
 # =====================
+token = None
+token_expire = 0
+
 def get_token():
-    global cached_token, cached_token_expire_at
+    global token, token_expire
     now = int(time.time())
 
-    if cached_token and now < cached_token_expire_at:
-        return cached_token
+    if token and now < token_expire:
+        return token
 
-    payload = {
-        "iss": os.environ["CLIENT_ID"],
-        "sub": os.environ["CLIENT_EMAIL"],
-        "iat": now,
-        "exp": now + 3600
-    }
-
-    private_key = os.environ["PRIVATE_KEY"].replace("\\n", "\n")
-    jwt_token = jwt.encode(payload, private_key, algorithm="RS256")
-
-    r = session.post(
-        "https://auth.worksmobile.com/oauth2/v2.0/token",
-        data={
-            "assertion": jwt_token,
-            "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
-            "client_id": os.environ["CLIENT_ID"],
-            "client_secret": os.environ["CLIENT_SECRET"],
-            "scope": "bot.message"
+    try:
+        payload = {
+            "iss": os.environ["CLIENT_ID"],
+            "sub": os.environ["CLIENT_EMAIL"],
+            "iat": now,
+            "exp": now + 3600
         }
-    )
 
-    token = r.json()["access_token"]
-    cached_token = token
-    cached_token_expire_at = now + 3000
-    return token
+        private_key = os.environ["PRIVATE_KEY"].replace("\\n", "\n")
+        jwt_token = jwt.encode(payload, private_key, algorithm="RS256")
+
+        r = requests.post(
+            "https://auth.worksmobile.com/oauth2/v2.0/token",
+            data={
+                "assertion": jwt_token,
+                "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+                "client_id": os.environ["CLIENT_ID"],
+                "client_secret": os.environ["CLIENT_SECRET"],
+                "scope": "bot.message"
+            }
+        )
+
+        token = r.json()["access_token"]
+        token_expire = now + 3000
+        return token
+
+    except:
+        return None
 
 def send(user_id, body):
-    token = get_token()
-    session.post(
+    t = get_token()
+    if not t:
+        return
+
+    requests.post(
         f"https://www.worksapis.com/v1.0/bots/{BOT_ID}/users/{user_id}/messages",
-        headers={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {t}"},
         json=body
     )
 
@@ -111,37 +115,20 @@ def send_text(user_id, text):
     send(user_id, {"content": {"type": "text", "text": text}})
 
 # =====================
-# 스펙 메뉴 (복구)
+# 안전 기능들
 # =====================
 def send_category_menu(user_id):
-    send(user_id, {
-        "content": {
-            "type": "button_template",
-            "contentText": "스펙 선택",
-            "actions": [
-                {"type": "message", "label": c, "text": c}
-                for c in CATEGORY_LIST
-            ]
-        }
-    })
+    send_text(user_id, "스펙 기능 준비중")
 
-# =====================
-# 스펙 출력 (간단 복구)
-# =====================
 def send_spec(user_id, category):
-    rows = [r for r in data if r.get("구분") == category]
+    rows = [r for r in data if safe_str(r.get("구분")).upper() == category]
     if not rows:
         send_text(user_id, "데이터 없음")
         return
+    send_text(user_id, rows[0].get("스펙코드", "-"))
 
-    text = "\n".join([r.get("스펙코드", "-") for r in rows[:10]])
-    send_text(user_id, text)
-
-# =====================
-# PRODUCT FLEX
-# =====================
 def send_product(user_id, row):
-    name = safe_str(row.get("제품명"))
+    name = safe_str(row.get("제품명")) or "-"
     desc = safe_str(row.get("설명"))
     img = safe_str(row.get("이미지"))
 
@@ -164,20 +151,22 @@ def send_product(user_id, row):
         "content": {"type": "flex", "altText": name, "contents": bubble}
     })
 
-# =====================
-# OEM
-# =====================
 def send_oem(user_id):
     bubbles = []
+
     for r in oem_data:
         bubbles.append({
             "type": "bubble",
             "body": {
                 "type": "box",
                 "layout": "vertical",
-                "contents": [{"type": "text", "text": r.get("OEM", "-")}]
+                "contents": [{"type": "text", "text": safe_str(r.get("OEM"))}]
             }
         })
+
+    if not bubbles:
+        send_text(user_id, "OEM 없음")
+        return
 
     send(user_id, {
         "content": {
@@ -193,20 +182,23 @@ def send_oem(user_id):
 def handle_message(user_id, msg):
     norm = normalize_text(msg)
 
+    # FAQ
     if norm in FAQ_NORMALIZED:
         send_text(user_id, FAQ_NORMALIZED[norm])
         return
 
-    # PRODUCT 직접
+    # PRODUCT 직접 매칭
     for r in product_data:
         if normalize_text(r.get("제품명")) == norm:
             send_product(user_id, r)
             return
 
+    # OEM
     if norm == "OEM":
         send_oem(user_id)
         return
 
+    # 스펙
     if norm in ["스펙", "SPEC"]:
         send_category_menu(user_id)
         return
@@ -219,8 +211,13 @@ def handle_message(user_id, msg):
 
 @app.route("/", methods=["POST"])
 def bot():
-    req = request.get_json()
-    handle_message(req["source"]["userId"], req["content"]["text"])
+    try:
+        req = request.get_json()
+        user_id = req["source"]["userId"]
+        msg = req["content"]["text"]
+        handle_message(user_id, msg)
+    except Exception as e:
+        print("ERROR:", e)
     return "ok"
 
 @app.route("/health")
