@@ -1,62 +1,12 @@
-name: Render Keep-Alive Ping
+name: Wake Ping
 
 on:
   schedule:
-    # KST 07:00 ~ 07:55 = UTC 22:00 ~ 22:55
-    - cron: '0,5,10,15,20,25,30,35,40,45,50,55 22 * * *'
-
-    # KST 08:00 ~ 08:55 = UTC 23:00 ~ 23:55
-    - cron: '0,5,10,15,20,25,30,35,40,45,50,55 23 * * *'
-
-    # KST 09:00 ~ 00:55 = UTC 00:00 ~ 15:55
-    - cron: '0,5,10,15,20,25,30,35,40,45,50,55 0-15 * * *'
-
-    # KST 01:00 = UTC 16:00
-    - cron: '0 16 * * *'
-
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 jobs:
-  ping_service:
+  ping:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Send Render keep-alive ping
-        run: |
-          URL="https://naver-bot-1-24jt.onrender.com/wake"
-
-          KST_HOUR=$(TZ=Asia/Seoul date +%H)
-          KST_MIN=$(TZ=Asia/Seoul date +%M)
-
-          echo "KST time: $(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M:%S')"
-
-          if [ "$KST_HOUR" = "07" ] && [ "$KST_MIN" = "00" ]; then
-            echo "07:00 KST wake-up burst start"
-            for i in 1 2 3 4 5 6 7 8 9 10
-            do
-              echo "Wake request $i"
-              curl -L -s -o /dev/null \
-                -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36" \
-                -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8" \
-                -H "Accept-Language: ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7" \
-                -H "Cache-Control: no-cache" \
-                -H "Pragma: no-cache" \
-                -H "Connection: keep-alive" \
-                -H "Upgrade-Insecure-Requests: 1" \
-                "$URL"
-              sleep 3
-            done
-            echo "07:00 KST wake-up burst done"
-          else
-            echo "Regular keep-alive ping"
-            curl -L -s -o /dev/null \
-              -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36" \
-              -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8" \
-              -H "Accept-Language: ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7" \
-              -H "Cache-Control: no-cache" \
-              -H "Pragma: no-cache" \
-              -H "Connection: keep-alive" \
-              -H "Upgrade-Insecure-Requests: 1" \
-              "$URL"
-            echo "Regular keep-alive ping done"
-          fi
+      - run: curl -s https://naver-bot-1-24jt.onrender.com/wake > /dev/null
