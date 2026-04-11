@@ -507,7 +507,6 @@ def get_oem_groups_in_order():
 def get_oem_rows_by_group(group_name):
     target = normalize_text(group_name)
     rows = [row for row in oem_data if normalize_text(row.get("OEM", "")) == target]
-    rows.sort(key=lambda x: (x["순서"], safe_str(x["HANMI P/N"]), safe_str(x["OEM P/NO"])))
     return rows
 
 
@@ -591,7 +590,7 @@ def get_product_groups_in_order():
 
 def get_products_by_group(group_name):
     rows = [row for row in product_data if normalize_text(row.get("구분", "")) == normalize_text(group_name)]
-    rows.sort(key=lambda x: (x["순서"], safe_str(x["품명"])))
+    rows.sort(key=lambda x: (x["순서"], x["품명"]))
     return rows
 
 
