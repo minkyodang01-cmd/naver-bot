@@ -470,13 +470,6 @@ def send_flex_spec_pages(user_id, category):
 
 # OEM 기능
 
-def normalize_oem_group(raw_group):
-    raw = normalize_text(raw_group)
-    if raw == "GM":
-        return "GMW"
-    return safe_str(raw_group)
-
-
 def display_oem_group_name(raw_group):
     raw = normalize_text(raw_group)
     if raw == "GMW":
@@ -493,7 +486,7 @@ def get_oem_groups_in_order():
             seen.add(group)
             existing.append(group)
 
-    preferred = ["HKMC", "GMW", "GM", "RENAULT", "APTIV", "UL", "Daimler"]
+    preferred = ["HKMC", "GMW", "GM", "RENAULT", "APTIV", "UL", "DAIMLER"]
     ordered = []
     used = set()
 
@@ -597,9 +590,17 @@ def get_product_groups_in_order():
 
 
 def get_products_by_group(group_name):
-    rows = [row for row in product_data if safe_str(row.get("구분", "")) == group_name]
+    rows = [row for row in product_data if normalize_text(row.get("구분", "")) == normalize_text(group_name)]
     rows.sort(key=lambda x: (x["순서"], safe_str(x["품명"])))
     return rows
+
+
+def find_product_group_by_name(user_input):
+    target = normalize_text(user_input)
+    for group_name in get_product_groups_in_order():
+        if normalize_text(group_name) == target:
+            return group_name
+    return None
 
 
 def send_product_group_menu(user_id):
@@ -803,24 +804,35 @@ def handle_message(user_id, raw_msg):
     msg_normalized = normalize_text(raw_msg)
     msg_upper = raw_msg.upper()
 
-    if msg_normalized in FAQ_NORMALIZED:
-        send_text_message(user_id, FAQ_NORMALIZED[msg_normalized])
-        return
-
+    # 1. 제품명 우선
     matched_product = find_product_by_name(raw_msg)
     if matched_product:
         send_product_flex(user_id, matched_product)
         return
 
+    # 2. 제품구분 직접 입력 우선
+    matched_group = find_product_group_by_name(raw_msg)
+    if matched_group:
+        send_product_items_by_group(user_id, matched_group)
+        return
+
+    # 3. 제품 시작 키워드
     if msg_normalized in ["제품", "튜브"]:
         send_product_group_menu(user_id)
         return
 
+    # 4. 제품구분 버튼 선택
     if msg_upper.startswith("PRODG|"):
         group_name = raw_msg.split("|", 1)[1].strip()
         send_product_items_by_group(user_id, group_name)
         return
 
+    # 5. FAQ
+    if msg_normalized in FAQ_NORMALIZED:
+        send_text_message(user_id, FAQ_NORMALIZED[msg_normalized])
+        return
+
+    # 6. OEM
     if msg_normalized in ["OEM", "승인도", "오엠"]:
         send_oem_group_menu(user_id)
         return
@@ -830,6 +842,7 @@ def handle_message(user_id, raw_msg):
         send_oem_flex_pages(user_id, group_name)
         return
 
+    # 7. 스펙
     if msg_normalized in ["스펙", "스팩", "SPEC"]:
         send_category_menu(user_id)
         return
@@ -844,6 +857,7 @@ def handle_message(user_id, raw_msg):
         send_flex_spec_pages(user_id, msg_upper)
         return
 
+    # 8. FAQ 유사어는 맨 마지막
     similar_key = find_similar_faq_key(msg_normalized)
     if similar_key:
         send_text_message(user_id, FAQ_NORMALIZED[similar_key])
