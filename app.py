@@ -266,7 +266,7 @@ def make_download_box(pdf_link):
     }
 
 
-def make_passive_box(text="▽"):
+def make_product_select_box(item_name):
     return {
         "type": "box",
         "layout": "vertical",
@@ -277,10 +277,15 @@ def make_passive_box(text="▽"):
         "paddingBottom": "3px",
         "paddingStart": "4px",
         "paddingEnd": "4px",
+        "action": {
+            "type": "message",
+            "label": safe_str(item_name)[:20] or "select",
+            "text": safe_str(item_name)
+        },
         "contents": [
             {
                 "type": "text",
-                "text": text,
+                "text": "▽",
                 "size": "xs",
                 "weight": "bold",
                 "color": "#FFFFFF",
@@ -628,21 +633,7 @@ def make_product_preview_row(row):
     if material:
         desc_parts.append(material)
 
-    return make_list_row(item_name, " / ".join(desc_parts), make_passive_box("▽"))
-
-
-def send_product_item_buttons(user_id, group_name, rows):
-    actions = []
-    for row in rows:
-        item_name = safe_str(row.get("품명", ""))
-        if item_name:
-            actions.append({
-                "type": "message",
-                "label": item_name[:20],
-                "text": item_name
-            })
-
-    send_button_template(user_id, f"[{group_name}] 품명을 선택하세요.", actions)
+    return make_list_row(item_name, " / ".join(desc_parts), make_product_select_box(item_name))
 
 
 def send_product_items_by_group(user_id, group_name):
@@ -652,7 +643,6 @@ def send_product_items_by_group(user_id, group_name):
         return
 
     send_flex_grouped_pages(user_id, f"{group_name} 목록", f"{group_name} 목록", rows, make_product_preview_row)
-    send_product_item_buttons(user_id, group_name, rows)
 
 
 def build_product_body_contents(row):
