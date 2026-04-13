@@ -856,13 +856,8 @@ def handle_message(user_id, raw_msg):
         send_flex_spec_pages(user_id, msg_upper)
         return
 
-    # 8. FAQ 유사어는 맨 마지막
-    similar_key = find_similar_faq_key(msg_normalized)
-    if similar_key:
-        send_text_message(user_id, FAQ_NORMALIZED[similar_key])
-        return
 
-    send_text_message(user_id, "원하시는 기능을 찾지 못했습니다.")
+    send_text_message(user_id, "원하시는 기능을 찾지 못했습니다(오타주의).")
 
 
 @app.route("/health", methods=["GET"])
